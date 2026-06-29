@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { useAnalysisStream } from "@/hooks/use-analysis-stream";
 import { PipelineProgress } from "@/components/analysis/pipeline-progress";
 import { HistorianOutput } from "@/components/analysis/historian-output";
+import { CommitGraph } from "@/components/analysis/commit-graph";
 import { CandidateTable } from "@/components/analysis/candidate-table";
 import { RecommendationCard } from "@/components/analysis/recommendation-card";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,11 @@ export default function AnalysisPage() {
             selectedTask={selectedTask}
             analysisId={analysisId}
           />
+        )}
+
+        {/* Knowledge Graph */}
+        {historianData && (
+          <CommitGraph projectState={historianData} />
         )}
 
         {/* Historian output */}

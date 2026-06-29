@@ -92,6 +92,8 @@ export function useAnalysisStream(analysisId: string): AnalysisStreamState {
     });
 
     eventSource.addEventListener("error", (event) => {
+      // Always close on error to prevent reconnection loop
+      eventSource.close();
       // Try to parse error data
       try {
         const data = JSON.parse((event as MessageEvent).data);
@@ -101,15 +103,12 @@ export function useAnalysisStream(analysisId: string): AnalysisStreamState {
           isComplete: true,
         }));
       } catch {
-        // EventSource native error (connection lost)
-        if (eventSource.readyState === EventSource.CLOSED) {
-          setState((prev) => {
-            if (!prev.isComplete && !prev.error) {
-              return { ...prev, error: "Connection lost", isComplete: true };
-            }
-            return prev;
-          });
-        }
+        setState((prev) => {
+          if (!prev.isComplete && !prev.error) {
+            return { ...prev, error: "Connection lost", isComplete: true };
+          }
+          return prev;
+        });
       }
     });
 
