@@ -93,11 +93,11 @@
   --primary: #e5e5e5;
   --primary-foreground: #000000;
   --secondary: #141414;
-  --secondary-foreground: #b5b5b5;
+  --secondary-foreground: #c4c4c4;
   --muted: #141414;
-  --muted-foreground: #8a8a8a;
+  --muted-foreground: #9a9a9a;
   --accent: #141414;
-  --accent-foreground: #b5b5b5;
+  --accent-foreground: #c4c4c4;
   --destructive: oklch(0.704 0.191 22.216);
   --border: #1a1a1a;
   --input: #1a1a1a;

@@ -77,9 +77,12 @@ export function CandidateTable({ tasks, selectedTaskId }: CandidateTableProps) {
                           {task.title}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground/40 mt-0.5 leading-relaxed">
-                        {task.whyNow}
-                      </p>
+                      <div className="mt-1 flex items-start gap-1.5">
+                        <span className="text-[9px] font-mono text-chart-1/40 mt-px shrink-0">why</span>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {task.whyNow}
+                        </p>
+                      </div>
                     </div>
                     <div>
                       <Badge

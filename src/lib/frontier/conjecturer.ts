@@ -5,61 +5,65 @@ import {
   type ProjectState,
 } from "@/lib/schemas";
 
-const CONJECTURER_SYSTEM = `You generate candidate next tasks for a software project. Be extremely concise in all output.
+const CONJECTURER_SYSTEM = `You generate candidate next tasks for a software project. Be concise.
 
-Rules:
-- Tasks must be LOCAL CONTINUATIONS of recent commits, not generic roadmap items.
-- Each "whyNow" MUST reference a specific recent commit message or README section that motivates this task.
-- 30-120 minutes each. Not trivial, not massive.
-- Diverse mix of types. 8-12 tasks.
-- Keep all text fields short: titles under 10 words, descriptions one sentence, whyNow one sentence with specific evidence.
+CRITICAL RULES:
+- Every task MUST be traceable to specific evidence. The "whyNow" field must cite the exact source:
+  - A commit message (quote it, e.g., 'Commit "Add Stripe SDK" added payment deps but no webhook handler')
+  - A README section (e.g., 'README mentions "real-time updates" but no WebSocket code exists')
+  - A gap between what's documented and what's built (e.g., 'README lists 5 API endpoints, only 3 exist in code')
+- Tasks must be LOCAL CONTINUATIONS of recent work. Not generic. Not roadmap items.
+- 30-120 minutes each. Diverse types. 8-12 tasks.
+- Titles under 10 words. Descriptions one sentence.
 
-Anti-patterns (zero tolerance):
-- Generic tasks like "improve error handling" or "add tests"
-- Tasks disconnected from the actual commit history
-- Roadmap items disguised as tasks`;
+ANTI-PATTERNS (zero tolerance):
+- "Improve error handling" — where? which errors? cite the commit.
+- "Add tests" — for what? which module? what broke?
+- "Set up CI/CD" — generic, not project-specific
+- Any task where whyNow could apply to any project`;
 
 export async function runConjecturer(input: {
-  projectState: ProjectState;
+  projectState: ProjectState & { _commits?: { sha: string; message: string; date: string; filesChanged: string[] }[] };
   goal?: string;
   deadline?: string;
   notes?: string;
 }): Promise<CandidateTask[]> {
-  const prompt = `Based on the following project state, generate 8-12 candidate next tasks.
+  // Include actual commit messages so the LLM can cite them
+  const commits = (input.projectState._commits ?? []).slice(0, 20);
+  const commitLog = commits
+    .map((c) => `[${c.sha}] ${c.message.split("\n")[0]}${c.filesChanged.length > 0 ? ` (${c.filesChanged.slice(0, 5).join(", ")})` : ""}`)
+    .join("\n");
 
-## Project State Summary
+  const prompt = `Generate 8-12 candidate next tasks. Each task's "whyNow" must cite a specific commit or README section below.
+
+## Project Summary
 ${input.projectState.summary}
 
-## Recent Trajectory
-${input.projectState.recentTrajectory.map((t) => `- ${t}`).join("\n")}
-
-## Completed Capabilities
-${input.projectState.completedCapabilities.map((c) => `- ${c}`).join("\n")}
-
-## Active Workstreams
-${input.projectState.activeWorkstreams.map((w) => `- ${w}`).join("\n")}
-
-## Likely Missing Pieces
-${input.projectState.likelyMissingPieces.map((m) => `- ${m}`).join("\n")}
-
-## Blockers
-${input.projectState.blockers.map((b) => `- ${b}`).join("\n")}
+## Recent Commits (cite these in whyNow)
+${commitLog || "No commits available."}
 
 ## Inferred Frontier
 ${input.projectState.inferredFrontier}
 
+## Active Workstreams
+${input.projectState.activeWorkstreams.map((w) => `- ${w}`).join("\n")}
+
+## Gaps
+${input.projectState.likelyMissingPieces.map((m) => `- ${m}`).join("\n")}
+
 ## Tech Stack
 ${input.projectState.techStack.join(", ")}
 
-## Momentum: ${input.projectState.momentum}
-
-${input.goal ? `## User's Goal\n${input.goal}\n` : ""}
+${input.goal ? `## Goal\n${input.goal}\n` : ""}
 ${input.deadline ? `## Deadline\n${input.deadline}\n` : ""}
-${input.notes ? `## Additional Context\n${input.notes}\n` : ""}
+${input.notes ? `## Context\n${input.notes}\n` : ""}
 
-Generate 8-12 candidate tasks that are natural next steps from the current frontier. Each task should be a concrete, actionable piece of work that a developer could start immediately. Prioritize tasks that continue the current momentum and trajectory.
+For each task, the "whyNow" must start with evidence like:
+- "Commit [sha] added X but didn't Y..."
+- "README says X but the code only has Y..."
+- "Recent commits to [file] suggest Z is next..."
 
-Assign each task an id like "task-1", "task-2", etc.`;
+Assign ids: task-1, task-2, etc.`;
 
   const result = await callStructured({
     system: CONJECTURER_SYSTEM,

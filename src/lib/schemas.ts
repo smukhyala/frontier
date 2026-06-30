@@ -57,7 +57,7 @@ export const CandidateTaskSchema = z.object({
   estimatedMinutes: z.number().describe("30-120"),
   whyNow: z
     .string()
-    .describe("One sentence: why this task now, referencing specific recent commits or README sections"),
+    .describe("Must cite specific evidence. Start with: 'Commit [sha] ...' or 'README mentions ...' or 'Files [x,y] were changed but ...' — never generic reasoning"),
   expectedArtifact: z
     .string()
     .describe("What exists when done, under 10 words"),

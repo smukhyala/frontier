@@ -128,7 +128,7 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
     let candidateTasks: CandidateTask[];
     try {
       candidateTasks = await runConjecturer({
-        projectState,
+        projectState: { ...projectState, _commits: commits.slice(0, 20) },
         goal,
         deadline,
         notes,

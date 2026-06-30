@@ -20,9 +20,10 @@ export async function callStructured<T extends z.ZodType>(params: {
     maxTokens = 8192,
   } = params;
 
-  // Use Zod v4's built-in JSON Schema conversion
   const jsonSchema = z.toJSONSchema(schema) as Record<string, unknown>;
   delete jsonSchema["$schema"];
+  // Strip keywords not supported by OpenAI strict mode
+  stripUnsupportedKeywords(jsonSchema);
 
   const response = await client.chat.completions.create({
     model,
@@ -35,17 +36,29 @@ export async function callStructured<T extends z.ZodType>(params: {
       type: "json_schema",
       json_schema: {
         name: schemaName,
-        strict: false,
+        strict: true,
         schema: jsonSchema,
       },
     },
   });
 
   const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("No content in response");
-  }
+  if (!content) throw new Error("No content in response");
 
-  const parsed = schema.parse(JSON.parse(content));
-  return parsed;
+  return schema.parse(JSON.parse(content));
+}
+
+function stripUnsupportedKeywords(obj: Record<string, unknown>): void {
+  // OpenAI strict mode doesn't support these
+  delete obj["minItems"];
+  delete obj["maxItems"];
+  delete obj["minimum"];
+  delete obj["maximum"];
+  delete obj["pattern"];
+  delete obj["format"];
+  for (const value of Object.values(obj)) {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      stripUnsupportedKeywords(value as Record<string, unknown>);
+    }
+  }
 }
