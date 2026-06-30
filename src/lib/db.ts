@@ -143,3 +143,15 @@ export function getRunsByRepo(
     )
     .all(owner, repo, userId, limit) as AnalysisRunRow[];
 }
+
+export function getRecentCompletedRuns(
+  userId: string,
+  limit = 5
+): AnalysisRunRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      "SELECT * FROM analysis_runs WHERE user_id = ? AND status = 'completed' AND planner_output IS NOT NULL ORDER BY completed_at DESC LIMIT ?"
+    )
+    .all(userId, limit) as AnalysisRunRow[];
+}

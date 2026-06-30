@@ -5,9 +5,9 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
-  // Protect /repos and /analysis routes
   if (
-    (pathname.startsWith("/repos") || pathname.startsWith("/analysis")) &&
+    (pathname.startsWith("/analysis") ||
+      pathname.startsWith("/dashboard")) &&
     !isLoggedIn
   ) {
     return NextResponse.redirect(new URL("/", req.url));
@@ -17,5 +17,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/repos/:path*", "/analysis/:path*"],
+  matcher: ["/analysis/:path*", "/dashboard/:path*"],
 };

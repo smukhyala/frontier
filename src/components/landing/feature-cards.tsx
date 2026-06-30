@@ -2,85 +2,85 @@
 
 import { motion } from "motion/react";
 import { GitCommit, BarChart3, ClipboardCheck, GitBranch, Shield, Zap } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const features = [
-  {
-    icon: GitCommit,
-    title: "Trajectory-aware",
-    description:
-      "Analyzes your actual commit history, not a hypothetical roadmap. Every suggestion is grounded in what you've actually built.",
-  },
-  {
-    icon: BarChart3,
-    title: "7-dimension scoring",
-    description:
-      "Each candidate is scored on trajectory fit, blocking power, information gain, clarity, momentum, deadline relevance, and right-sizing.",
-  },
-  {
-    icon: Shield,
-    title: "Guide-filtered quality",
-    description:
-      "Like SGS's Guide reward, Frontier penalizes vague tasks, fake productivity, and oversized roadmap items disguised as actionable work.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Execution-ready plans",
-    description:
-      "Get concrete 30/60/90 minute execution plans with definition of done, risks, and missing context. Start immediately.",
-  },
-  {
-    icon: GitBranch,
-    title: "GitHub-native workflow",
-    description:
-      "Create GitHub issues directly from recommendations. Copy plans to clipboard. Your workflow stays in one place.",
-  },
-  {
-    icon: Zap,
-    title: "Real-time pipeline",
-    description:
-      "Watch each stage complete in real-time via server-sent events. See your project state being reconstructed live.",
-  },
+  { icon: GitCommit, title: "Trajectory-aware", desc: "Grounded in actual commits" },
+  { icon: BarChart3, title: "7-dim scoring", desc: "Not vibes, scored metrics" },
+  { icon: Shield, title: "Guide-filtered", desc: "Prevents degenerate tasks" },
+  { icon: ClipboardCheck, title: "30/60/90 plans", desc: "Start immediately" },
+  { icon: GitBranch, title: "GitHub-native", desc: "Issues from recommendations" },
+  { icon: Zap, title: "Real-time pipeline", desc: "Watch stages complete live" },
+];
+
+const integrations = [
+  { name: "GitHub", status: "live", color: "bg-emerald-400" },
+  { name: "Linear", status: "planned", color: "bg-muted-foreground/30" },
+  { name: "Notion", status: "planned", color: "bg-muted-foreground/30" },
+  { name: "Slack", status: "planned", color: "bg-muted-foreground/30" },
+  { name: "Jira", status: "planned", color: "bg-muted-foreground/30" },
+  { name: "VS Code", status: "planned", color: "bg-muted-foreground/30" },
 ];
 
 export function FeatureCards() {
   return (
-    <section className="border-t border-border/30 py-24">
-      <div className="mx-auto max-w-6xl px-4">
+    <section className="border-t border-border/20 py-20">
+      <div className="mx-auto max-w-5xl px-4">
+        {/* Features grid - compact */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-16">
+          {features.map((f, i) => (
+            <motion.div
+              key={f.title}
+              className="rounded-xl border border-border/20 bg-card/30 p-4 text-center"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.04 }}
+            >
+              <f.icon className="h-5 w-5 text-primary/50 mx-auto mb-2" />
+              <div className="text-xs font-medium">{f.title}</div>
+              <div className="text-[10px] text-muted-foreground/50 mt-0.5">{f.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Integrations */}
         <motion.div
-          className="text-center mb-16"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
         >
-          <Badge variant="outline" className="mb-4 text-xs border-primary/20 text-primary">
-            Features
-          </Badge>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Built for real workflows
-          </h2>
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-semibold">Integrations</h3>
+              <Badge variant="secondary" className="text-[10px]">
+                Same pipeline, different outputs
+              </Badge>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {integrations.map((int, i) => (
+                <motion.div
+                  key={int.name}
+                  className="rounded-lg border border-border/20 p-3 text-center"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.04 }}
+                >
+                  <div className="text-sm font-medium">{int.name}</div>
+                  <div className="flex items-center justify-center gap-1 mt-1">
+                    <div className={`h-1.5 w-1.5 rounded-full ${int.color}`} />
+                    <span className="text-[10px] text-muted-foreground/50">{int.status}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground/40 mt-4 text-center">
+              Frontier&apos;s pipeline outputs structured data. Each integration is a different consumer of the same scored task.
+            </p>
+          </Card>
         </motion.div>
-
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              className="group rounded-2xl border border-border/30 bg-card/50 p-6 transition-all hover:border-primary/20 hover:bg-card"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: index * 0.06 }}
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/5 border border-primary/10 mb-4 transition-colors group-hover:bg-primary/10">
-                <feature.icon className="h-5 w-5 text-primary/70" />
-              </div>
-              <h3 className="font-semibold text-base">{feature.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
-            </motion.div>
-          ))}
-        </div>
       </div>
     </section>
   );

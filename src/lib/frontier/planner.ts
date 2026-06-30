@@ -16,18 +16,20 @@ The previous stages have:
 3. Guide: Scored and critiqued each candidate
 
 Now you must:
-1. Select the BEST task (usually the highest-scored, but you may override if you have strong reasoning)
-2. Produce a concrete, step-by-step execution plan in three time variants (30/60/90 minutes)
-3. Define clear "definition of done" criteria
-4. Identify risks and missing context
-5. Draft a GitHub issue for the selected task
+1. Select the BEST task
+2. Explain how it connects to the user's goal/deadline (or natural trajectory if none given)
+3. State what a generic AI planner would suggest instead and why that's worse right now
+4. Produce a concrete execution plan in three time variants (30/60/90 minutes)
+5. Define "definition of done" criteria
+6. Identify risks and missing context
+7. Draft a GitHub issue
 
 Rules:
-- The execution plan must be concrete enough to start immediately
-- Reference specific files, functions, or components from the project state when possible
-- The 30-minute version should be a meaningful subset, not just "step 1"
-- Each time variant should build on the previous one
-- Risks should be actionable, not generic
+- Be concise. Steps under 15 words. Done criteria under 10 words. Risks under 10 words.
+- Reference specific files or components when possible
+- The 30-minute version should be a meaningful subset
+- goalConnection must tie to the user's stated goal/deadline or the project trajectory
+- genericAlternative must name a specific generic task and explain why it's wrong for right now
 - The GitHub issue should be well-formatted markdown`;
 
 export async function runPlanner(input: {

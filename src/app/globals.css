@@ -84,37 +84,37 @@
 }
 
 .dark {
-  --background: oklch(0.12 0.005 260);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.16 0.008 260);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.16 0.008 260);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.72 0.15 250);
-  --primary-foreground: oklch(0.12 0.005 260);
-  --secondary: oklch(0.22 0.01 260);
-  --secondary-foreground: oklch(0.90 0 0);
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.22 0.015 260);
-  --accent-foreground: oklch(0.90 0 0);
+  --background: #000000;
+  --foreground: #e5e5e5;
+  --card: #0a0a0a;
+  --card-foreground: #e5e5e5;
+  --popover: #0a0a0a;
+  --popover-foreground: #e5e5e5;
+  --primary: #e5e5e5;
+  --primary-foreground: #000000;
+  --secondary: #141414;
+  --secondary-foreground: #b5b5b5;
+  --muted: #141414;
+  --muted-foreground: #8a8a8a;
+  --accent: #141414;
+  --accent-foreground: #b5b5b5;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.72 0.15 250);
-  --chart-1: oklch(0.72 0.15 250);
-  --chart-2: oklch(0.70 0.15 160);
-  --chart-3: oklch(0.75 0.15 55);
-  --chart-4: oklch(0.65 0.18 300);
-  --chart-5: oklch(0.70 0.15 25);
-  --sidebar: oklch(0.16 0.008 260);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.72 0.15 250);
-  --sidebar-primary-foreground: oklch(0.95 0 0);
-  --sidebar-accent: oklch(0.22 0.01 260);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.72 0.15 250);
+  --border: #1a1a1a;
+  --input: #1a1a1a;
+  --ring: #404040;
+  --chart-1: #93c5fd;
+  --chart-2: #60a5fa;
+  --chart-3: #3b82f6;
+  --chart-4: #fca5a5;
+  --chart-5: #f87171;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #e5e5e5;
+  --sidebar-primary: #e5e5e5;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #141414;
+  --sidebar-accent-foreground: #a3a3a3;
+  --sidebar-border: #1a1a1a;
+  --sidebar-ring: #404040;
 }
 
 @layer base {

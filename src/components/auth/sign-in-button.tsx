@@ -13,7 +13,7 @@ export function SignInButton({
 }) {
   return (
     <Button
-      onClick={() => signIn("github", { callbackUrl: "/repos" })}
+      onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
       size={size}
       className={className}
     >

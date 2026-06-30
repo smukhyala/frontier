@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import {
   Target,
   Clock,
@@ -16,7 +15,6 @@ import {
   Check,
   Loader2,
   ExternalLink,
-  HelpCircle,
 } from "lucide-react";
 import { GitHubIcon } from "@/components/icons";
 import { useCopyClipboard } from "@/hooks/use-copy-clipboard";
@@ -39,23 +37,20 @@ export function RecommendationCard({
   const [issueUrl, setIssueUrl] = useState<string | null>(null);
 
   const handleCopy = () => {
-    const plan = formatPlanAsMarkdown(recommendation, selectedTask);
-    copy(plan);
-    toast.success("Plan copied to clipboard");
+    copy(formatPlan(recommendation, selectedTask));
+    toast.success("Copied");
   };
 
   const handleCreateIssue = async () => {
     setIssueCreating(true);
     try {
-      const res = await fetch(`/api/analysis/${analysisId}/issue`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Failed to create issue");
+      const res = await fetch(`/api/analysis/${analysisId}/issue`, { method: "POST" });
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setIssueUrl(data.url);
-      toast.success("GitHub issue created");
+      toast.success("Issue created");
     } catch {
-      toast.error("Failed to create GitHub issue");
+      toast.error("Failed");
     } finally {
       setIssueCreating(false);
     }
@@ -67,210 +62,139 @@ export function RecommendationCard({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, delay: 0.2 }}
     >
-      <Card className="border-primary/30 bg-gradient-to-b from-primary/5 to-transparent">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
+      <Card className="border-chart-1/15">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Target className="h-5 w-5 text-primary" />
-                Recommended Next Task
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-chart-1">
+                <Target className="h-3.5 w-3.5" />
+                Frontier Task
               </CardTitle>
-              <h3 className="mt-2 text-lg font-semibold">
-                {selectedTask.title}
-              </h3>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Badge variant="outline">
-                  {selectedTask.taskType}
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  <Clock className="h-3 w-3 mr-1" />
-                  ~{selectedTask.estimatedMinutes} min
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  Score: {selectedTask.totalScore}/35
-                </Badge>
+              <h3 className="mt-1.5 text-lg font-medium">{selectedTask.title}</h3>
+              <div className="mt-1.5 flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px] border-border">{selectedTask.taskType}</Badge>
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                  <Clock className="h-2.5 w-2.5" />
+                  {selectedTask.estimatedMinutes}m
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  {selectedTask.totalScore}/35
+                </span>
               </div>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopy}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 mr-1" />
-                ) : (
-                  <Copy className="h-4 w-4 mr-1" />
-                )}
-                {copied ? "Copied" : "Copy Plan"}
+            <div className="flex gap-1.5 shrink-0">
+              <Button variant="outline" size="sm" className="h-7 text-xs border-border" onClick={handleCopy}>
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
               {issueUrl ? (
                 <a href={issueUrl} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm">
-                    <ExternalLink className="h-4 w-4 mr-1" />
-                    View Issue
+                  <Button variant="outline" size="sm" className="h-7 text-xs border-border">
+                    <ExternalLink className="h-3 w-3" />
                   </Button>
                 </a>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCreateIssue}
-                  disabled={issueCreating}
-                >
-                  {issueCreating ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <GitHubIcon className="h-4 w-4 mr-1" />
-                  )}
-                  Create Issue
+                <Button variant="outline" size="sm" className="h-7 text-xs border-border" onClick={handleCreateIssue} disabled={issueCreating}>
+                  {issueCreating ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitHubIcon className="h-3 w-3" />}
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
-          <div>
-            <h4 className="text-sm font-medium mb-2">Why this task?</h4>
+        <CardContent className="space-y-4">
+          {/* Why + goal connection */}
+          <div className="space-y-2">
             <p className="text-sm text-muted-foreground leading-relaxed">
               {recommendation.reasoning}
             </p>
+
+            {/* Goal/deadline connection */}
+            {recommendation.goalConnection && (
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-chart-1 font-mono text-[10px] mt-0.5 shrink-0">goal</span>
+                <span className="text-muted-foreground">{recommendation.goalConnection}</span>
+              </div>
+            )}
+
+            {/* Commit evidence */}
+            {selectedTask.whyNow && (
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-chart-1 font-mono text-[10px] mt-0.5 shrink-0">evidence</span>
+                <span className="text-muted-foreground">{selectedTask.whyNow}</span>
+              </div>
+            )}
           </div>
 
-          <Separator />
-
-          <div>
-            <h4 className="text-sm font-medium mb-3">Execution Plan</h4>
-            <Tabs defaultValue="60">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="30">
-                  <Clock className="h-3.5 w-3.5 mr-1.5" />
-                  30 min
-                </TabsTrigger>
-                <TabsTrigger value="60">
-                  <Clock className="h-3.5 w-3.5 mr-1.5" />
-                  60 min
-                </TabsTrigger>
-                <TabsTrigger value="90">
-                  <Clock className="h-3.5 w-3.5 mr-1.5" />
-                  90 min
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="30" className="mt-4">
-                <StepList steps={recommendation.executionPlan.thirtyMinuteVersion} />
-              </TabsContent>
-              <TabsContent value="60" className="mt-4">
-                <StepList steps={recommendation.executionPlan.sixtyMinuteVersion} />
-              </TabsContent>
-              <TabsContent value="90" className="mt-4">
-                <StepList steps={recommendation.executionPlan.ninetyMinuteVersion} />
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          <Separator />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                Definition of Done
-              </h4>
-              <ul className="space-y-1.5">
-                {recommendation.definitionOfDone.map((item, i) => (
-                  <li
-                    key={i}
-                    className="text-sm text-muted-foreground flex items-start gap-2"
-                  >
-                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-400" />
-                  Risks
-                </h4>
-                <ul className="space-y-1.5">
-                  {recommendation.risks.map((risk, i) => (
-                    <li
-                      key={i}
-                      className="text-sm text-muted-foreground flex items-start gap-2"
-                    >
-                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                      {risk}
+          {/* Execution Plans */}
+          <Tabs defaultValue="60">
+            <TabsList className="grid w-full grid-cols-3 h-8">
+              <TabsTrigger value="30" className="text-xs">30m</TabsTrigger>
+              <TabsTrigger value="60" className="text-xs">60m</TabsTrigger>
+              <TabsTrigger value="90" className="text-xs">90m</TabsTrigger>
+            </TabsList>
+            {(["30", "60", "90"] as const).map((t) => (
+              <TabsContent key={t} value={t} className="mt-3">
+                <ol className="space-y-1">
+                  {(t === "30" ? recommendation.executionPlan.thirtyMinuteVersion :
+                    t === "60" ? recommendation.executionPlan.sixtyMinuteVersion :
+                    recommendation.executionPlan.ninetyMinuteVersion
+                  ).map((step, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-mono text-muted-foreground mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span className="text-muted-foreground leading-relaxed">{step}</span>
                     </li>
                   ))}
-                </ul>
-              </div>
+                </ol>
+              </TabsContent>
+            ))}
+          </Tabs>
 
-              {recommendation.missingContext.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
-                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    Missing Context
-                  </h4>
-                  <ul className="space-y-1.5">
-                    {recommendation.missingContext.map((item, i) => (
-                      <li
-                        key={i}
-                        className="text-sm text-muted-foreground flex items-start gap-2"
-                      >
-                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-muted-foreground shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          {/* Done + Risks - compact */}
+          <div className="grid gap-3 sm:grid-cols-2 text-xs">
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <CheckCircle2 className="h-3 w-3 text-emerald-500/60" />
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Done when</span>
+              </div>
+              {recommendation.definitionOfDone.map((d, i) => (
+                <div key={i} className="text-muted-foreground leading-relaxed">&bull; {d}</div>
+              ))}
+            </div>
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <AlertTriangle className="h-3 w-3 text-chart-4/60" />
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Risks</span>
+              </div>
+              {recommendation.risks.map((r, i) => (
+                <div key={i} className="text-muted-foreground leading-relaxed">&bull; {r}</div>
+              ))}
             </div>
           </div>
+
+          {/* Specific generic vs frontier comparison */}
+          {recommendation.genericAlternative && (
+            <div className="border-t border-border pt-3 grid grid-cols-2 gap-3 text-xs">
+              <div className="rounded-md bg-chart-5/[0.04] border border-chart-5/10 p-2.5">
+                <div className="text-[10px] text-chart-5/60 font-mono mb-1">generic planner</div>
+                <p className="text-muted-foreground/60 leading-relaxed">
+                  {recommendation.genericAlternative}
+                </p>
+              </div>
+              <div className="rounded-md bg-chart-1/[0.04] border border-chart-1/10 p-2.5">
+                <div className="text-[10px] text-chart-1/60 font-mono mb-1">frontier</div>
+                <p className="text-muted-foreground leading-relaxed">
+                  {selectedTask.title} — grounded in your last {selectedTask.estimatedMinutes < 60 ? "few" : "several"} commits.
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
   );
 }
 
-function StepList({ steps }: { steps: string[] }) {
-  return (
-    <ol className="space-y-2">
-      {steps.map((step, i) => (
-        <li key={i} className="flex items-start gap-3 text-sm">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-            {i + 1}
-          </span>
-          <span className="text-muted-foreground leading-relaxed">{step}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function formatPlanAsMarkdown(
-  rec: FrontierRecommendation,
-  task: ScoredTask
-): string {
-  return `# ${task.title}
-
-**Type:** ${task.taskType} | **Est:** ${task.estimatedMinutes} min | **Score:** ${task.totalScore}/35
-
-## Why This Task
-${rec.reasoning}
-
-## Execution Plan (60 min)
-${rec.executionPlan.sixtyMinuteVersion.map((s, i) => `${i + 1}. ${s}`).join("\n")}
-
-## Definition of Done
-${rec.definitionOfDone.map((d) => `- [ ] ${d}`).join("\n")}
-
-## Risks
-${rec.risks.map((r) => `- ${r}`).join("\n")}
-
----
-*Generated by Frontier*
-`;
+function formatPlan(rec: FrontierRecommendation, task: ScoredTask): string {
+  return `# ${task.title}\n\n${rec.reasoning}\n\n## Steps (60m)\n${rec.executionPlan.sixtyMinuteVersion.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\n## Done when\n${rec.definitionOfDone.map((d) => `- [ ] ${d}`).join("\n")}`;
 }

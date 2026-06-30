@@ -2,141 +2,81 @@
 
 import { motion } from "motion/react";
 import { BookOpen, Lightbulb, Scale, Target, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 const stages = [
   {
     icon: BookOpen,
     name: "Historian",
-    sgsRole: "State Reconstruction",
-    description: "Analyzes commits, README, issues, and PRs to reconstruct what has been built and where the frontier lies.",
-    outputs: ["Project summary", "Tech stack", "Active workstreams", "Inferred frontier"],
+    what: "Reads commits, README, issues",
+    output: "Project state + frontier",
     color: "text-blue-400",
-    bgColor: "bg-blue-400/10",
-    borderColor: "border-blue-400/20",
-    glowColor: "shadow-blue-500/10",
+    bg: "bg-blue-400/10",
+    border: "border-blue-400/20",
   },
   {
     icon: Lightbulb,
     name: "Conjecturer",
-    sgsRole: "Problem Generation",
-    description: "Generates 8-12 candidate next tasks that are local continuations of recent work.",
-    outputs: ["Task descriptions", "Time estimates", "Dependencies", "Expected artifacts"],
+    what: "Generates candidate tasks",
+    output: "8-12 actionable tasks",
     color: "text-amber-400",
-    bgColor: "bg-amber-400/10",
-    borderColor: "border-amber-400/20",
-    glowColor: "shadow-amber-500/10",
+    bg: "bg-amber-400/10",
+    border: "border-amber-400/20",
   },
   {
     icon: Scale,
     name: "Guide",
-    sgsRole: "Quality Control",
-    description: "Scores each task on 7 dimensions to prevent degenerate suggestions and surface high-leverage work.",
-    outputs: ["7-dim scores (0-5)", "Total score /35", "Critique", "Failure modes"],
+    what: "Scores on 7 dimensions",
+    output: "Ranked + filtered tasks",
     color: "text-emerald-400",
-    bgColor: "bg-emerald-400/10",
-    borderColor: "border-emerald-400/20",
-    glowColor: "shadow-emerald-500/10",
+    bg: "bg-emerald-400/10",
+    border: "border-emerald-400/20",
   },
   {
     icon: Target,
     name: "Planner",
-    sgsRole: "Execution",
-    description: "Selects the best task and produces concrete 30/60/90 minute execution plans.",
-    outputs: ["Selected task", "Execution steps", "Definition of done", "GitHub issue"],
+    what: "Picks best task",
+    output: "30/60/90 min plan",
     color: "text-purple-400",
-    bgColor: "bg-purple-400/10",
-    borderColor: "border-purple-400/20",
-    glowColor: "shadow-purple-500/10",
+    bg: "bg-purple-400/10",
+    border: "border-purple-400/20",
   },
 ];
 
 export function PipelineVisual() {
   return (
-    <section className="py-24 relative">
-      <div className="absolute inset-0 -z-10">
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
-            backgroundSize: "40px 40px",
-          }}
-        />
-      </div>
-
-      <div className="mx-auto max-w-6xl px-4">
-        <motion.div
-          className="text-center mb-16"
+    <section className="py-20">
+      <div className="mx-auto max-w-5xl px-4">
+        <motion.h2
+          className="text-3xl font-bold tracking-tight text-center mb-12"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
         >
-          <Badge variant="outline" className="mb-4 text-xs border-primary/20 text-primary">
-            The Pipeline
-          </Badge>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Four stages, one recommendation
-          </h2>
-          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Each stage builds on the last. The Conjecturer generates candidates.
-            The Guide filters. The Planner executes.
-          </p>
-        </motion.div>
+          Four stages, one task
+        </motion.h2>
 
-        <div className="grid gap-6 lg:grid-cols-4">
-          {stages.map((stage, index) => (
+        <div className="flex flex-col lg:flex-row items-stretch gap-3">
+          {stages.map((stage, i) => (
             <motion.div
               key={stage.name}
-              className="relative group"
-              initial={{ opacity: 0, y: 30 }}
+              className="flex items-center gap-3 flex-1"
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ delay: i * 0.08 }}
             >
-              <div
-                className={`relative rounded-2xl border ${stage.borderColor} ${stage.bgColor} p-6 h-full transition-shadow hover:shadow-lg ${stage.glowColor}`}
-              >
-                {/* Stage number */}
-                <div className="absolute -top-3 -right-3 flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border text-xs font-mono font-bold text-muted-foreground">
-                  {index + 1}
+              <div className={`relative flex-1 rounded-xl border ${stage.border} ${stage.bg} p-5`}>
+                <div className="flex items-center gap-2.5 mb-3">
+                  <stage.icon className={`h-5 w-5 ${stage.color}`} />
+                  <span className="font-semibold">{stage.name}</span>
                 </div>
-
-                <div className="flex items-center gap-3 mb-4">
-                  <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-xl ${stage.bgColor} border ${stage.borderColor}`}
-                  >
-                    <stage.icon className={`h-5 w-5 ${stage.color}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{stage.name}</h3>
-                    <p className={`text-[10px] font-mono ${stage.color} opacity-70`}>
-                      SGS: {stage.sgsRole}
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  {stage.description}
-                </p>
-
-                <div className="space-y-1.5">
-                  {stage.outputs.map((output) => (
-                    <div
-                      key={output}
-                      className="flex items-center gap-2 text-xs text-muted-foreground/70"
-                    >
-                      <div className={`h-1 w-1 rounded-full ${stage.color.replace("text-", "bg-")} opacity-50`} />
-                      {output}
-                    </div>
-                  ))}
+                <div className="text-xs text-muted-foreground">{stage.what}</div>
+                <div className={`text-[10px] font-mono mt-2 ${stage.color} opacity-60`}>
+                  &rarr; {stage.output}
                 </div>
               </div>
-
-              {/* Arrow between stages */}
-              {index < stages.length - 1 && (
-                <div className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10">
-                  <ArrowRight className="h-4 w-4 text-muted-foreground/20" />
-                </div>
+              {i < stages.length - 1 && (
+                <ArrowRight className="h-4 w-4 text-muted-foreground/15 shrink-0 hidden lg:block" />
               )}
             </motion.div>
           ))}

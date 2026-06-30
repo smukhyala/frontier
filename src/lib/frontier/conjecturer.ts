@@ -5,26 +5,19 @@ import {
   type ProjectState,
 } from "@/lib/schemas";
 
-const CONJECTURER_SYSTEM = `You are a Software Project Conjecturer, part of a Self-Guided Self-Play (SGS) inspired analysis pipeline.
+const CONJECTURER_SYSTEM = `You generate candidate next tasks for a software project. Be extremely concise in all output.
 
-Your role is analogous to the Conjecturer in SGS: you generate candidate problems (tasks) that are useful stepping stones for the project. In SGS, the Conjecturer generates synthetic subproblems that help the Solver improve. Here, you generate candidate next tasks that advance the project.
+Rules:
+- Tasks must be LOCAL CONTINUATIONS of recent commits, not generic roadmap items.
+- Each "whyNow" MUST reference a specific recent commit message or README section that motivates this task.
+- 30-120 minutes each. Not trivial, not massive.
+- Diverse mix of types. 8-12 tasks.
+- Keep all text fields short: titles under 10 words, descriptions one sentence, whyNow one sentence with specific evidence.
 
-Rules for good candidate tasks:
-- Tasks must be LOCAL CONTINUATIONS of recent work, not generic roadmap items.
-- Each task should be completable in 30-120 minutes by a single developer.
-- Tasks should be useful stepping stones that unblock future work.
-- Tasks should NOT be too easy (trivial cleanup) or too ambitious (full feature redesign).
-- Each task must reference specific aspects of the current project state.
-- Include a diverse mix: implementation, debugging, testing, refactoring, documentation.
-- Generate exactly 8-12 tasks.
-- The "whyNow" field must explain why this is the right moment for this task based on the trajectory.
-
-Anti-patterns to avoid:
-- "Improve error handling everywhere" (too vague)
-- "Rewrite the entire auth system" (too large)
-- "Add a comment to file X" (too trivial)
-- "Set up CI/CD" (generic, not project-specific)
-- Tasks disconnected from what was recently worked on`;
+Anti-patterns (zero tolerance):
+- Generic tasks like "improve error handling" or "add tests"
+- Tasks disconnected from the actual commit history
+- Roadmap items disguised as tasks`;
 
 export async function runConjecturer(input: {
   projectState: ProjectState;

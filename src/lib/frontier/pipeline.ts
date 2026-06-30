@@ -111,8 +111,9 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
         deadline,
         notes,
       });
-      updateRunStage(analysisId, "historian", JSON.stringify(projectState));
-      emit({ stage: "historian", status: "complete", data: projectState });
+      const historianPayload = { ...projectState, _commits: commits.slice(0, 20) };
+      updateRunStage(analysisId, "historian", JSON.stringify(historianPayload));
+      emit({ stage: "historian", status: "complete", data: historianPayload });
     } catch (error) {
       emit({
         stage: "historian",

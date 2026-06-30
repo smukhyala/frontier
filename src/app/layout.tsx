@@ -16,9 +16,17 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Frontier - Find your next task from actual project trajectory",
+  title: "Frontier",
   description:
-    "SGS-inspired project planning tool that analyzes your GitHub repository and recommends the next highest-leverage task.",
+    "Find your next task from actual project trajectory.",
+  icons: {
+    icon: [
+      {
+        url: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23000'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='18' font-family='system-ui' fill='%2393c5fd'>F</text></svg>",
+        type: "image/svg+xml",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
