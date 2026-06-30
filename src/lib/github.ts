@@ -221,6 +221,38 @@ export async function getFileContents(
   return results;
 }
 
+export async function getCommitDiffs(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  shas: string[],
+  maxPerCommit = 1500
+): Promise<{ sha: string; patches: { filename: string; patch: string }[] }[]> {
+  // Fetch up to 8 commits in parallel to keep API usage reasonable
+  const toFetch = shas.slice(0, 8);
+  const settled = await Promise.allSettled(
+    toFetch.map(async (sha) => {
+      const { data } = await octokit.rest.repos.getCommit({ owner, repo, ref: sha });
+      const patches = (data.files ?? [])
+        .filter((f) => f.patch)
+        .slice(0, 10)
+        .map((f) => ({
+          filename: f.filename,
+          patch: (f.patch ?? "").slice(0, maxPerCommit),
+        }));
+      return { sha: sha.slice(0, 7), patches };
+    })
+  );
+
+  const results: { sha: string; patches: { filename: string; patch: string }[] }[] = [];
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      results.push(result.value);
+    }
+  }
+  return results;
+}
+
 export async function createGitHubIssue(
   octokit: Octokit,
   owner: string,

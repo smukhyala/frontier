@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getComparison, updateComparisonOutcome } from "@/lib/db";
-import { createOctokit, getRecentCommits, getOpenIssues } from "@/lib/github";
+import { createOctokit, getRecentCommits, getOpenIssues, getCommitDiffs } from "@/lib/github";
 import { evaluateOutcome } from "@/lib/frontier/evaluation";
 
 export async function POST(
@@ -26,7 +26,6 @@ export async function POST(
   const baseline = JSON.parse(comparison.baseline_json);
   const frontier = JSON.parse(comparison.frontier_json);
 
-  // Fetch current state of repo to compare
   const octokit = createOctokit(session.accessToken);
   const [commits, issues] = await Promise.all([
     getRecentCommits(octokit, comparison.owner, comparison.repo, 20),
@@ -39,6 +38,21 @@ export async function POST(
     (c) => new Date(c.date) > comparisonDate
   );
 
+  // Fetch actual code diffs for substantive comparison
+  let diffs: { sha: string; patches: { filename: string; patch: string }[] }[] = [];
+  if (subsequentCommits.length > 0) {
+    try {
+      diffs = await getCommitDiffs(
+        octokit,
+        comparison.owner,
+        comparison.repo,
+        subsequentCommits.slice(0, 8).map((c) => c.sha)
+      );
+    } catch {
+      // Continue without diffs
+    }
+  }
+
   const outcomeScore = await evaluateOutcome({
     baselineTask: baseline.task,
     baselineDescription: baseline.description,
@@ -46,6 +60,7 @@ export async function POST(
     frontierDescription: frontier.selectedTask?.description ?? "",
     commits: subsequentCommits,
     issues: issues.map((i) => ({ number: i.number, title: i.title, state: "open" })),
+    diffs,
   });
 
   updateComparisonOutcome(

@@ -127,7 +127,11 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
         const prevGuide = JSON.parse(previousRun.guide_output!) as ScoredTask[];
         const prevTask = prevGuide.find((t) => t.id === prevPlanner.selectedTaskId) ?? prevGuide[0];
         if (prevTask) {
-          previousAccuracy = await scoreAccuracy(prevTask, commits);
+          previousAccuracy = await scoreAccuracy(prevTask, commits, {
+            octokit,
+            owner,
+            repo,
+          });
           updateAccuracyScore(previousRun.id, previousAccuracy);
         }
       } catch {

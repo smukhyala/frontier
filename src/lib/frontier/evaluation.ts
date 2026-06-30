@@ -272,6 +272,7 @@ export async function evaluateOutcome(input: {
   frontierDescription: string;
   commits: { sha: string; message: string; filesChanged: string[] }[];
   issues: { number: number; title: string; state: string }[];
+  diffs?: { sha: string; patches: { filename: string; patch: string }[] }[];
 }): Promise<OutcomeScore> {
   const commitSummary = input.commits
     .slice(0, 20)
@@ -286,8 +287,28 @@ export async function evaluateOutcome(input: {
     .map((i) => `#${i.number}: ${i.title} (${i.state})`)
     .join("\n");
 
+  let diffSection = "";
+  if (input.diffs && input.diffs.length > 0) {
+    let diffText = input.diffs
+      .map(
+        (d) =>
+          `[${d.sha}]\n${d.patches.map((p) => `--- ${p.filename} ---\n${p.patch}`).join("\n")}`
+      )
+      .join("\n\n");
+    if (diffText.length > 12000) {
+      diffText = diffText.slice(0, 12000) + "\n... (truncated)";
+    }
+    diffSection = `\n\n### Actual Code Changes (diffs)\n${diffText}`;
+  }
+
+  const hasDiffs = diffSection.length > 0;
+
   return callStructured({
-    system: `You are evaluating whether AI planners accurately predicted the user's next work. Score each recommendation from 0-100 based on how well it matched what actually happened. Be fair and consistent.`,
+    system: `You are evaluating whether AI planners accurately predicted the user's next work. Score each recommendation from 0-100 based on how well it matched what actually happened.
+
+${hasDiffs ? "You have access to the actual code diffs. Use these as the PRIMARY signal — they show the substance of what was built. Commit messages can be vague or misleading; the code changes are ground truth." : "You only have commit messages and filenames."}
+
+Be fair and consistent. Focus on what the code changes actually accomplish, not surface-level naming similarity.`,
     prompt: `## Baseline Recommendation
 Task: ${input.baselineTask}
 Description: ${input.baselineDescription}
@@ -302,9 +323,9 @@ Description: ${input.frontierDescription}
 ${commitSummary || "No subsequent commits found."}
 
 ### Issue Updates
-${issueSummary || "No issue updates found."}
+${issueSummary || "No issue updates found."}${diffSection}
 
-Give a score from 0-100 for each recommendation. Explain why.`,
+Score each recommendation 0-100 based on how well it predicted the actual work. Focus on the substance of the code changes.`,
     schema: OutcomeScoreSchema,
     schemaName: "outcome_score",
     model: "gpt-4o-mini",
