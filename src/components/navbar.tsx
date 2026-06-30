@@ -9,6 +9,7 @@ import { UserMenu } from "@/components/auth/user-menu";
 const navLinks = [
   { href: "/demo", label: "Demo" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/evaluate", label: "Evaluate" },
   { href: "/paper", label: "Paper" },
 ];
 

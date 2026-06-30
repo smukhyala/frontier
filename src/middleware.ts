@@ -7,7 +7,8 @@ export default auth((req) => {
 
   if (
     (pathname.startsWith("/analysis") ||
-      pathname.startsWith("/dashboard")) &&
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/evaluate")) &&
     !isLoggedIn
   ) {
     return NextResponse.redirect(new URL("/", req.url));
@@ -17,5 +18,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/analysis/:path*", "/dashboard/:path*"],
+  matcher: ["/analysis/:path*", "/dashboard/:path*", "/evaluate/:path*"],
 };

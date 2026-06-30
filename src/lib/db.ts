@@ -62,6 +62,33 @@ function getDb(): Database.Database {
     );
   `);
 
+  // ── Planner Comparisons (Evaluation Framework) ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS planner_comparisons (
+      id TEXT PRIMARY KEY,
+      owner TEXT NOT NULL,
+      repo TEXT NOT NULL,
+      goal TEXT,
+      deadline TEXT,
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      current_stage TEXT,
+      baseline_json TEXT,
+      frontier_json TEXT,
+      diff_json TEXT,
+      winner TEXT,
+      winner_notes TEXT,
+      baseline_prediction_score REAL,
+      frontier_prediction_score REAL,
+      outcome_json TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      completed_at TEXT,
+      user_id TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_comparisons_repo ON planner_comparisons(owner, repo);
+    CREATE INDEX IF NOT EXISTS idx_comparisons_user ON planner_comparisons(user_id);
+  `);
+
   return db;
 }
 
@@ -353,4 +380,146 @@ export function getWebhookConfig(
 export function deleteWebhookConfig(owner: string, repo: string): void {
   const db = getDb();
   db.prepare("DELETE FROM webhook_configs WHERE owner = ? AND repo = ?").run(owner, repo);
+}
+
+// ── Planner Comparisons ──
+
+export interface ComparisonRow {
+  id: string;
+  owner: string;
+  repo: string;
+  goal: string | null;
+  deadline: string | null;
+  notes: string | null;
+  status: string;
+  current_stage: string | null;
+  baseline_json: string | null;
+  frontier_json: string | null;
+  diff_json: string | null;
+  winner: string | null;
+  winner_notes: string | null;
+  baseline_prediction_score: number | null;
+  frontier_prediction_score: number | null;
+  outcome_json: string | null;
+  created_at: string;
+  completed_at: string | null;
+  user_id: string;
+}
+
+export function insertComparison(params: {
+  id: string;
+  owner: string;
+  repo: string;
+  goal?: string;
+  deadline?: string;
+  notes?: string;
+  userId: string;
+}): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO planner_comparisons (id, owner, repo, goal, deadline, notes, status, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`
+  ).run(
+    params.id,
+    params.owner,
+    params.repo,
+    params.goal ?? null,
+    params.deadline ?? null,
+    params.notes ?? null,
+    params.userId
+  );
+}
+
+export function updateComparisonBaseline(id: string, baselineJson: string): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE planner_comparisons SET baseline_json = ?, current_stage = 'baseline', status = 'running' WHERE id = ?"
+  ).run(baselineJson, id);
+}
+
+export function updateComparisonFrontier(id: string, frontierJson: string): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE planner_comparisons SET frontier_json = ?, current_stage = 'planner' WHERE id = ?"
+  ).run(frontierJson, id);
+}
+
+export function updateComparisonDiff(id: string, diffJson: string): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE planner_comparisons SET diff_json = ?, current_stage = 'diff' WHERE id = ?"
+  ).run(diffJson, id);
+}
+
+export function updateComparisonStatus(
+  id: string,
+  status: "completed" | "failed",
+  error?: string
+): void {
+  const db = getDb();
+  if (status === "completed") {
+    db.prepare(
+      "UPDATE planner_comparisons SET status = 'completed', completed_at = datetime('now') WHERE id = ?"
+    ).run(id);
+  } else {
+    db.prepare(
+      "UPDATE planner_comparisons SET status = 'failed', current_stage = ?, completed_at = datetime('now') WHERE id = ?"
+    ).run(error ?? "Unknown error", id);
+  }
+}
+
+export function updateComparisonVote(
+  id: string,
+  winner: "baseline" | "frontier" | "tie",
+  notes?: string
+): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE planner_comparisons SET winner = ?, winner_notes = ? WHERE id = ?"
+  ).run(winner, notes ?? null, id);
+}
+
+export function updateComparisonOutcome(
+  id: string,
+  baselineScore: number,
+  frontierScore: number,
+  outcomeJson: string
+): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE planner_comparisons SET baseline_prediction_score = ?, frontier_prediction_score = ?, outcome_json = ? WHERE id = ?"
+  ).run(baselineScore, frontierScore, outcomeJson, id);
+}
+
+export function getComparison(id: string): ComparisonRow | undefined {
+  const db = getDb();
+  return db
+    .prepare("SELECT * FROM planner_comparisons WHERE id = ?")
+    .get(id) as ComparisonRow | undefined;
+}
+
+export function getComparisonsForUser(
+  userId: string,
+  limit = 20
+): ComparisonRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      "SELECT * FROM planner_comparisons WHERE user_id = ? ORDER BY created_at DESC LIMIT ?"
+    )
+    .all(userId, limit) as ComparisonRow[];
+}
+
+export function getComparisonsByRepo(
+  owner: string,
+  repo: string,
+  userId: string,
+  limit = 10
+): ComparisonRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      "SELECT * FROM planner_comparisons WHERE owner = ? AND repo = ? AND user_id = ? ORDER BY created_at DESC LIMIT ?"
+    )
+    .all(owner, repo, userId, limit) as ComparisonRow[];
 }

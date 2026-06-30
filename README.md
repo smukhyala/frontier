@@ -137,9 +137,61 @@ src/
 
 After each analysis, when you run a new one on the same repo, Frontier compares what it recommended last time to what you actually committed. It scores keyword overlap between the recommended task and your subsequent commits + file changes. This accuracy metric feeds back into the Guide, adjusting scoring priorities when predictions are off.
 
-## Proof of Concept
+## Evaluation
 
-Currently works with GitHub. The pipeline outputs structured data that could feed into Notion pages, Slack updates, Linear tickets, or daily standup summaries. This is a starting point.
+Frontier is evaluated against a baseline planner that only receives the user's goal and deadline. Frontier additionally receives the full repository trajectory: git history, README, file activity patterns, issues, PRs, and code snapshots.
+
+The purpose is to investigate whether software development history contains enough signal to recommend a better next task than static planning.
+
+### How It Works
+
+Navigate to `/evaluate` and:
+
+1. **Choose a repository, goal, and deadline**
+2. **Press "Run Comparison"** — the system executes both planners independently
+3. **Review side-by-side results** — see what each planner recommends, with full execution plans
+4. **Read "Why Frontier Differs"** — an LLM-generated explanation of exactly what additional signals Frontier used, referencing specific commits, files, and project state
+5. **Vote** — mark which recommendation is better (Baseline / Frontier / Tie)
+6. **Evaluate Outcome** — after working on the repo, return and click "Evaluate Outcome" to score both predictions against what actually happened (0-100)
+
+### Evidence View
+
+Every Frontier recommendation shows its evidence chain — the specific commits, files, README sections, and gaps that motivated the task. This is visually prominent on both the analysis page and the evaluation comparison view.
+
+### What Gets Stored
+
+```
+planner_comparisons
+├── id, repo, goal, deadline
+├── baseline_json     — Baseline planner output
+├── frontier_json     — Full Frontier pipeline output
+├── diff_json         — LLM analysis of why they differ
+├── winner            — Human vote (baseline | frontier | tie)
+├── baseline_prediction_score  — 0-100, how well baseline predicted actual work
+├── frontier_prediction_score  — 0-100, how well frontier predicted actual work
+└── created_at
+```
+
+### Aggregate Stats
+
+The evaluate page shows aggregate statistics: total comparisons, win rates, and average prediction scores. These accumulate as you run more comparisons across your repositories.
+
+### Tests
+
+Four lightweight reliability tests validate the core pipeline contracts:
+
+```bash
+npm test
+```
+
+1. **Historian schema** — malformed LLM output is rejected
+2. **Conjecturer schema** — missing fields are caught
+3. **Guide sorting** — higher scores always rank above lower scores
+4. **GitHub parser** — commits, files, and dates are correctly extracted
+
+## Design Philosophy
+
+This project is a research prototype investigating whether project trajectory can outperform static planning. The evaluation framework is the centerpiece — the claim is not "Frontier recommends your next task" but rather "Can project trajectory outperform static planning?"
 
 ## License
 

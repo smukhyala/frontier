@@ -84,6 +84,8 @@ Frontier is a full-stack web application that connects to a user's GitHub reposi
 - `/demo` — Pre-computed analysis of a fictional e-commerce repo, no auth required
 - `/dashboard` — Repo picker, weekly dev schedule calendar, frontier task cards, accuracy stats, learning status, model stats
 - `/analysis/[id]` — Real-time pipeline progress (SSE streaming), recommendation card with evidence chain, commit timeline with theme categorization, file activity heatmap, project state, candidate task table with expandable scores, task history timeline, feedback/regenerate, progress tracking
+- `/evaluate` — Evaluation framework: run side-by-side comparisons of Baseline vs Frontier planners, aggregate stats (win rates, prediction scores), past comparisons list
+- `/evaluate/[id]` — Side-by-side comparison view with 7-stage progress, diff analysis, human voting, outcome evaluation
 - `/paper` — Explanation of SGS theory, reward functions, scaling law, Frontier mapping
 
 **Key UI Features:**
@@ -95,15 +97,6 @@ Frontier is a full-stack web application that connects to a user's GitHub reposi
 - Auto-scroll to recommendation when it loads
 - Auto-close GitHub issues when task marked done
 
-### Database (SQLite)
-
-Four tables:
-- `analysis_runs` — pipeline inputs/outputs, status, accuracy score, GitHub issue number
-- `task_status` — per-task outcome tracking (started/done/skipped)
-- `task_embeddings` — 1536-dim vectors + outcomes for similarity search
-- `scoring_models` — serialized logistic regression weights per repo
-- `webhook_configs` — stored access tokens for webhook-triggered re-analysis
-
 ### Infrastructure
 
 - Next.js 16 App Router + TypeScript
@@ -113,6 +106,68 @@ Four tables:
 - better-sqlite3 with WAL mode
 - Octokit for GitHub API
 - Zod for schema validation with OpenAI strict mode JSON output
+- Vitest for reliability tests (schema validation, sorting, parsing)
+
+### Evaluation Framework
+
+**Baseline Planner** (`src/lib/frontier/baseline-planner.ts`)
+- Receives: only the user's goal, deadline, and notes — no repository context whatsoever
+- Produces: `BaselineRecommendation` — task title, description, reasoning, estimated time, risks, definition of done, 30/60/90 minute execution plans
+- Temperature: 0.5
+- System prompt explicitly states it has no access to git history, source code, README, issues, or any project state
+
+**Evaluation Pipeline** (`src/lib/frontier/evaluation.ts`)
+- Orchestrates both planners independently against the same repository and goal
+- Runs 7 stages: baseline → github data → historian → conjecturer → guide → planner → diff analysis
+- Streams progress via SSE (same pattern as the main analysis pipeline)
+- After both planners complete, generates a diff analysis using GPT-4o that explains exactly what additional signals Frontier used, referencing specific commits, files, and project state
+- Provides outcome evaluation: fetches subsequent commits after the comparison was created and uses GPT-4o-mini to score both predictions (0-100) against what actually happened
+
+**Evaluation API Routes:**
+- `POST /api/evaluate` — start a new comparison (fires both planners in background)
+- `GET /api/evaluate` — list comparisons for current user
+- `GET /api/evaluate/[id]` — get comparison result with parsed JSON
+- `GET /api/evaluate/[id]/stream` — SSE streaming for real-time progress across all 7 stages
+- `POST /api/evaluate/[id]/vote` — submit human rating (baseline / frontier / tie)
+- `POST /api/evaluate/[id]/outcome` — evaluate predictions against subsequent commits
+
+**Evaluation UI (`/evaluate`):**
+- Repository picker with search, goal/deadline/notes form, "Run Comparison" button
+- Aggregate statistics: total comparisons, frontier wins, baseline wins, ties, average prediction scores
+- Past comparisons list with status badges, winner indicators, and prediction scores
+- Side-by-side comparison view (`/evaluate/[id]`):
+  - 7-stage progress bar (baseline, github, historian, conjecturer, guide, planner, diff)
+  - Baseline column: task, reasoning, execution plan (30/60/90m tabs), done criteria, risks
+  - Frontier column: same structure plus evidence chain, score out of 35, task type badge
+  - "Why Frontier Differs" section: LLM-generated summary with specific signals and their impact
+  - Human voting: three-option radio (Baseline better / Tie / Frontier better) with optional notes
+  - Outcome evaluation: button to score both predictions against actual subsequent work (0-100 per planner)
+
+**Evidence View:**
+- On every Frontier recommendation (both analysis and evaluation pages), the evidence chain is visually prominent
+- Each evidence entry is color-coded by type: commit (blue), file (amber), readme (green), goal (purple), gap (red), code_comment (orange)
+- Shows check marks next to each evidence entry to reinforce that recommendations are grounded in observable project state
+
+### Tests
+
+Four lightweight reliability tests (`src/__tests__/`, vitest):
+
+1. **Historian schema validation** (`historian-schema.test.ts`) — validates that well-formed ProjectState is accepted, malformed output (wrong types, missing fields, invalid enum) is rejected
+2. **Conjecturer schema validation** (`conjecturer-schema.test.ts`) — validates CandidateTask and CandidateTasksSchema, catches missing evidenceChain, invalid taskType, missing required fields
+3. **Guide sorting** (`guide-sorting.test.ts`) — higher totalScore always ranks above lower, handles equal scores, single task, empty array, extreme differences
+4. **GitHub parser** (`github-parser.test.ts`) — commit SHA truncation to 7 chars, file extraction, null author handling, issue body truncation to 500 chars, label filtering
+
+All 21 tests pass. Test infrastructure: vitest 4.x with path aliases matching tsconfig.
+
+### Database (SQLite)
+
+Six tables (updated from four):
+- `analysis_runs` — pipeline inputs/outputs, status, accuracy score, GitHub issue number
+- `task_status` — per-task outcome tracking (started/done/skipped)
+- `task_embeddings` — 1536-dim vectors + outcomes for similarity search
+- `scoring_models` — serialized logistic regression weights per repo
+- `webhook_configs` — stored access tokens for webhook-triggered re-analysis
+- `planner_comparisons` — evaluation framework: baseline/frontier JSON, diff analysis, human vote, prediction scores, outcome data
 
 ---
 
@@ -124,7 +179,6 @@ Four tables:
 - **PR diff content** — fetches PR metadata but not actual diff content
 - **Git blame/authorship analysis** — no per-file author tracking
 - **Deployment** — runs locally only, not deployed to any hosting
-- **Tests** — no test files exist (no unit, integration, or e2e tests)
 - **Rate limit handling** — no auto-retry on 429 errors
 - **Offline mode** — no service worker or caching
 - **Share/export** — no shareable URLs for analysis results (beyond .ics calendar)
