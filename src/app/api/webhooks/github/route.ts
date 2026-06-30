@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { nanoid } from "nanoid";
 import { getWebhookConfig } from "@/lib/db";
 import { runPipeline } from "@/lib/frontier/pipeline";
 import crypto from "crypto";
@@ -53,7 +54,6 @@ async function handlePush(payload: Record<string, unknown>) {
   }
 
   // Trigger pipeline
-  const { nanoid } = require("nanoid");
   const analysisId = nanoid(12);
 
   runPipeline({

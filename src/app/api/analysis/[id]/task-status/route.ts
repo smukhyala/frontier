@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getRun, upsertTaskStatus, getTaskStatusesForAnalysis } from "@/lib/db";
 import { createOctokit } from "@/lib/github";
+import { updateTaskOutcome } from "@/lib/frontier/embeddings";
 
 export async function GET(
   _request: NextRequest,
@@ -47,6 +48,18 @@ export async function POST(
     title: title ?? "",
     status,
   });
+
+  // Update embedding outcome for learning
+  try {
+    const outcomeMap: Record<string, "completed" | "started" | "skipped"> = {
+      done: "completed",
+      started: "started",
+      skipped: "skipped",
+    };
+    updateTaskOutcome(run.owner, run.repo, title ?? "", outcomeMap[status]);
+  } catch {
+    // Non-critical
+  }
 
   // Auto-close GitHub issue when task is marked done
   if (status === "done" && session.accessToken) {

@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { createOctokit, getUserRepos } from "@/lib/github";
 import { getRecentCompletedRuns } from "@/lib/db";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
+import { getLearningSignal } from "@/lib/frontier/embeddings";
+import { getModelStats } from "@/lib/frontier/scoring-model";
 import type { FrontierRecommendation, ScoredTask } from "@/lib/schemas";
 
 export interface FrontierCard {
@@ -110,12 +112,43 @@ export default async function DashboardPage() {
       }
     : null;
 
+  // Get learning signal from embeddings
+  let learningData = { totalTasks: 0, completedTasks: 0, avgAccuracy: null as number | null, successfulTypes: [] as string[], failedTypes: [] as string[] };
+  try {
+    // Aggregate across all repos with recent runs
+    const repos_with_runs = [...new Set(recentRuns.map((r) => `${r.owner}/${r.repo}`))];
+    for (const key of repos_with_runs) {
+      const [o, r] = key.split("/");
+      const signal = getLearningSignal(o, r);
+      learningData.totalTasks += signal.totalTasks;
+      learningData.completedTasks += signal.completedTasks;
+      if (signal.avgAccuracy !== null) learningData.avgAccuracy = signal.avgAccuracy;
+      learningData.successfulTypes.push(...signal.successfulTypes);
+      learningData.failedTypes.push(...signal.failedTypes);
+    }
+    learningData.successfulTypes = [...new Set(learningData.successfulTypes)];
+    learningData.failedTypes = [...new Set(learningData.failedTypes)];
+  } catch {}
+
+  // Get model stats
+  let modelData: { trained: boolean; samples: number; accuracy: number | null; loss: number | null } | null = null;
+  try {
+    const repos_with_runs = [...new Set(recentRuns.map((r) => `${r.owner}/${r.repo}`))];
+    for (const key of repos_with_runs) {
+      const [o, r] = key.split("/");
+      const stats = getModelStats(o, r);
+      if (stats?.trained) { modelData = stats; break; }
+    }
+  } catch {}
+
   return (
     <DashboardView
       repos={repos}
       frontierCards={frontierCards}
       scheduleTasks={scheduleTasks}
       accuracyData={accuracyData}
+      learningData={learningData}
+      modelData={modelData}
     />
   );
 }

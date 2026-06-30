@@ -10,6 +10,8 @@ import { Search, ArrowRight, Star, Lock, Globe, Clock, Zap } from "lucide-react"
 import { ContextDialog } from "./context-dialog";
 import { WeekCalendar } from "./week-calendar";
 import { AccuracyStats } from "./accuracy-stats";
+import { LearningStatus } from "./learning-status";
+import { ModelStats } from "./model-stats";
 import type { FrontierCard, ScheduleTask } from "@/app/dashboard/page";
 
 interface Repo {
@@ -29,11 +31,15 @@ export function DashboardView({
   frontierCards,
   scheduleTasks,
   accuracyData,
+  learningData,
+  modelData,
 }: {
   repos: Repo[];
   frontierCards: FrontierCard[];
   scheduleTasks: ScheduleTask[];
   accuracyData: { overall: number; count: number; trend: "improving" | "stable" | "declining" } | null;
+  learningData: { totalTasks: number; completedTasks: number; avgAccuracy: number | null; successfulTypes: string[]; failedTypes: string[] };
+  modelData: { trained: boolean; samples: number; accuracy: number | null; loss: number | null } | null;
 }) {
   const [search, setSearch] = useState("");
   const [dialogRepo, setDialogRepo] = useState<{ owner: string; repo: string } | null>(null);
@@ -72,6 +78,12 @@ export function DashboardView({
 
         {/* Weekly calendar */}
         <WeekCalendar tasks={scheduleTasks} />
+
+        {/* ML model status */}
+        <ModelStats data={modelData} />
+
+        {/* Learning status */}
+        <LearningStatus data={learningData} />
 
         {/* Accuracy stats */}
         {accuracyData && <AccuracyStats data={accuracyData} />}

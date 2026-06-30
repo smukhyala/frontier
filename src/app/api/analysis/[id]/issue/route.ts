@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getRun } from "@/lib/db";
+import { getRun, setGitHubIssueNumber } from "@/lib/db";
 import { createOctokit, createGitHubIssue } from "@/lib/github";
 import type { FrontierRecommendation } from "@/lib/schemas";
 
@@ -37,11 +37,7 @@ export async function POST(
   // Store issue number for auto-close later
   if (result.number) {
     try {
-      const Database = require("better-sqlite3");
-      const path = require("path");
-      const db = new Database(path.join(process.cwd(), "data", "frontier.db"));
-      try { db.exec("ALTER TABLE analysis_runs ADD COLUMN github_issue_number INTEGER"); } catch {}
-      db.prepare("UPDATE analysis_runs SET github_issue_number = ? WHERE id = ?").run(result.number, id);
+      setGitHubIssueNumber(id, result.number);
     } catch {}
   }
 

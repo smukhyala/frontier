@@ -76,10 +76,15 @@ export async function runConjecturer(input: {
   goal?: string;
   deadline?: string;
   notes?: string;
+  selfPlayExamples?: {
+    completed: { taskTitle: string; taskDescription: string; taskType: string }[];
+    skipped: { taskTitle: string; taskDescription: string; taskType: string }[];
+  };
 }): Promise<CandidateTask[]> {
   const commits = (input.projectState._commits ?? []).slice(0, 20);
   const codeSnippets = input.projectState._codeSnippets ?? [];
   const todos = input.projectState._todos ?? [];
+  const selfPlay = input.selfPlayExamples;
   const commitLog = commits
     .map((c) => `[${c.sha}] ${c.message.split("\n")[0]}${c.filesChanged.length > 0 ? ` (${c.filesChanged.slice(0, 5).join(", ")})` : ""}`)
     .join("\n");
@@ -118,6 +123,17 @@ ${todos.length > 0 ? `## TODOs & FIXMEs in Code (use as evidence type "code_comm
 ${input.goal ? `## Goal\n${input.goal}\n` : ""}
 ${input.deadline ? `## Deadline\n${input.deadline}\n` : ""}
 ${input.notes ? `## Context\n${input.notes}\n` : ""}
+
+${selfPlay && (selfPlay.completed.length > 0 || selfPlay.skipped.length > 0) ? `## Self-Play Reward Signal (from past recommendations)
+This is your training signal. Generate tasks SIMILAR to ones the user completed, and AVOID generating tasks similar to ones they skipped.
+
+${selfPlay.completed.length > 0 ? `### Tasks the user COMPLETED (positive reward — generate more like these):
+${selfPlay.completed.map((t) => `- "${t.taskTitle}" (${t.taskType}): ${t.taskDescription}`).join("\n")}` : ""}
+
+${selfPlay.skipped.length > 0 ? `### Tasks the user SKIPPED (negative reward — avoid generating these patterns):
+${selfPlay.skipped.map((t) => `- "${t.taskTitle}" (${t.taskType}): ${t.taskDescription}`).join("\n")}` : ""}
+
+Adapt your task generation based on this reward signal. The user's behavior IS the ground truth.` : ""}
 
 For each task, the "whyNow" must start with evidence like:
 - "Commit [sha] added X but didn't Y..."

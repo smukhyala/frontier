@@ -24,6 +24,8 @@ import { runGuide } from "./guide";
 import { runPlanner } from "./planner";
 import { analyzeFileActivity, extractTodos } from "./file-analysis";
 import { scoreAccuracy } from "./accuracy";
+import { storeTaskEmbedding, findSimilarTasks, getLearningSignal, getSelfPlayExamples, getEmbedding } from "./embeddings";
+import { trainScoringModel, scoreWithModel, loadModel, type ScoringModel } from "./scoring-model";
 import type { ProjectState, CandidateTask, ScoredTask, FrontierRecommendation } from "@/lib/schemas";
 
 export type PipelineStage = "historian" | "conjecturer" | "guide" | "planner";
@@ -170,6 +172,12 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
       throw error;
     }
 
+    // ── Self-play examples: past task outcomes as reward signal ──
+    let selfPlayExamples: { completed: { taskTitle: string; taskDescription: string; taskType: string }[]; skipped: { taskTitle: string; taskDescription: string; taskType: string }[] } = { completed: [], skipped: [] };
+    try {
+      selfPlayExamples = getSelfPlayExamples(owner, repo);
+    } catch {}
+
     // ── Stage 2: Conjecturer ──
     emit({ stage: "conjecturer", status: "running" });
     let candidateTasks: CandidateTask[];
@@ -179,6 +187,7 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
         goal,
         deadline,
         notes,
+        selfPlayExamples,
       });
       updateRunStage(
         analysisId,
@@ -199,6 +208,55 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
       throw error;
     }
 
+    // ── Train scoring model on accumulated outcome data ──
+    let scoringModel: ScoringModel | null = null;
+    try {
+      const trainResult = await trainScoringModel(owner, repo);
+      if (trainResult) {
+        scoringModel = trainResult.model;
+        console.log(`Scoring model trained: ${trainResult.accuracy * 100}% accuracy on ${trainResult.model.trainingSamples} samples, loss=${trainResult.loss.toFixed(4)}`);
+      } else {
+        scoringModel = loadModel(owner, repo);
+      }
+    } catch {
+      // Non-critical
+    }
+
+    // ── Embeddings: find similar past tasks + learning signal ──
+    let learningContext: string | undefined;
+    try {
+      const learningSignal = getLearningSignal(owner, repo);
+      const taskTexts = candidateTasks.map((t) => `${t.title}. ${t.description}`).join(" | ");
+      const similarTasks = await findSimilarTasks(taskTexts, owner, repo, 5);
+
+      const parts: string[] = [];
+      if (learningSignal.totalTasks > 0) {
+        parts.push(`Based on ${learningSignal.totalTasks} past tasks (${learningSignal.completedTasks} completed):`);
+        if (learningSignal.successfulTypes.length > 0) {
+          parts.push(`User tends to complete: ${learningSignal.successfulTypes.join(", ")} tasks`);
+        }
+        if (learningSignal.failedTypes.length > 0) {
+          parts.push(`User tends to skip: ${learningSignal.failedTypes.join(", ")} tasks`);
+        }
+        if (learningSignal.avgAccuracy !== null) {
+          parts.push(`Historical accuracy: ${Math.round(learningSignal.avgAccuracy * 100)}%`);
+        }
+      }
+      const completedSimilar = similarTasks.filter((t) => (t.outcome === "completed" || t.outcome === "started") && t.similarity > 0.7);
+      const skippedSimilar = similarTasks.filter((t) => t.outcome === "skipped" && t.similarity > 0.7);
+      if (completedSimilar.length > 0) {
+        parts.push(`Similar tasks the user actually did: ${completedSimilar.map((t) => `"${t.taskTitle}" (${Math.round(t.similarity * 100)}% similar)`).join(", ")}`);
+      }
+      if (skippedSimilar.length > 0) {
+        parts.push(`Similar tasks the user skipped: ${skippedSimilar.map((t) => `"${t.taskTitle}"`).join(", ")}`);
+      }
+      if (parts.length > 0) {
+        learningContext = parts.join("\n");
+      }
+    } catch {
+      // Non-critical — proceed without learning context
+    }
+
     // ── Stage 3: Guide ──
     emit({ stage: "guide", status: "running" });
     let scoredTasks: ScoredTask[];
@@ -209,7 +267,29 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
         goal,
         deadline,
         previousAccuracy,
+        selfPlayExamples,
+        learningContext,
       });
+      // ── Re-rank using trained scoring model ──
+      if (scoringModel?.trained) {
+        try {
+          const reranked = await Promise.all(
+            scoredTasks.map(async (task) => {
+              const taskText = `${task.title}. ${task.description}. Type: ${task.taskType}`;
+              const embedding = await getEmbedding(taskText);
+              const modelScore = scoreWithModel(scoringModel!, embedding, task.taskType, task.scores);
+              // Blend: 70% guide score + 30% model prediction (scaled to 0-35)
+              const blendedScore = Math.round(task.totalScore * 0.7 + modelScore * 35 * 0.3);
+              return { ...task, totalScore: blendedScore, _modelScore: modelScore };
+            })
+          );
+          scoredTasks = reranked.sort((a, b) => b.totalScore - a.totalScore);
+          console.log(`Model re-ranked tasks. Top: "${scoredTasks[0].title}" (blended=${scoredTasks[0].totalScore})`);
+        } catch {
+          // Fall back to guide-only ranking
+        }
+      }
+
       updateRunStage(analysisId, "guide", JSON.stringify(scoredTasks));
       emit({ stage: "guide", status: "complete", data: scoredTasks });
     } catch (error) {
@@ -247,6 +327,40 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
         error: String(error),
       });
       throw error;
+    }
+
+    // ── Store embeddings for learning ──
+    try {
+      const selectedTask = scoredTasks.find((t) => t.id === recommendation.selectedTaskId) ?? scoredTasks[0];
+      if (selectedTask) {
+        await storeTaskEmbedding({
+          owner,
+          repo,
+          userId,
+          taskTitle: selectedTask.title,
+          taskDescription: selectedTask.description,
+          taskType: selectedTask.taskType,
+          outcome: "recommended",
+          projectContext: projectState.inferredFrontier,
+        });
+      }
+      // Store top 3 non-selected tasks too (as "recommended" — outcome updates later)
+      for (const task of scoredTasks.slice(0, 3)) {
+        if (task.id !== recommendation.selectedTaskId) {
+          await storeTaskEmbedding({
+            owner,
+            repo,
+            userId,
+            taskTitle: task.title,
+            taskDescription: task.description,
+            taskType: task.taskType,
+            outcome: "recommended",
+            projectContext: projectState.inferredFrontier,
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // Non-critical
     }
 
     // ── Complete ──

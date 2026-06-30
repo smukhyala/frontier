@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import path from "path";
+import { nanoid } from "nanoid";
 
 let db: Database.Database | null = null;
 
@@ -233,7 +234,6 @@ export function upsertTaskStatus(params: {
           : "status = 'skipped'";
     db.prepare(`UPDATE task_status SET ${updates} WHERE id = ?`).run(existing.id);
   } else {
-    const { nanoid } = require("nanoid");
     db.prepare(
       "INSERT INTO task_status (id, analysis_id, task_id, owner, repo, user_id, title, status, started_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).run(
@@ -284,6 +284,16 @@ export function updateAccuracyScore(id: string, score: number): void {
   db.prepare("UPDATE analysis_runs SET accuracy_score = ? WHERE id = ?").run(score, id);
 }
 
+export function setGitHubIssueNumber(id: string, issueNumber: number): void {
+  const db = getDb();
+  try {
+    db.exec("ALTER TABLE analysis_runs ADD COLUMN github_issue_number INTEGER");
+  } catch {
+    // Column already exists
+  }
+  db.prepare("UPDATE analysis_runs SET github_issue_number = ? WHERE id = ?").run(issueNumber, id);
+}
+
 export function getLatestCompletedRun(
   owner: string,
   repo: string,
@@ -315,7 +325,6 @@ export function upsertWebhookConfig(params: {
   accessToken: string;
 }): void {
   const db = getDb();
-  const { nanoid } = require("nanoid");
   db.prepare(
     `INSERT INTO webhook_configs (id, owner, repo, user_id, access_token)
      VALUES (?, ?, ?, ?, ?)

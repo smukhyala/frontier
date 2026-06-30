@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.107.0",
     "@base-ui/react": "^1.6.0",
     "better-sqlite3": "^12.11.1",
     "class-variance-authority": "^0.7.1",

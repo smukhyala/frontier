@@ -59,6 +59,11 @@ export async function runGuide(input: {
   goal?: string;
   deadline?: string;
   previousAccuracy?: number;
+  learningContext?: string;
+  selfPlayExamples?: {
+    completed: { taskTitle: string; taskType: string }[];
+    skipped: { taskTitle: string; taskType: string }[];
+  };
 }): Promise<ScoredTask[]> {
   const taskList = input.candidateTasks
     .map(
@@ -88,6 +93,17 @@ ${input.projectState.recentTrajectory.map((t) => `- ${t}`).join("\n")}
 ${input.goal ? `## User's Goal\n${input.goal}\n` : ""}
 ${input.deadline ? `## Deadline\n${input.deadline}\n` : ""}
 ${input.previousAccuracy !== undefined ? `## Previous Recommendation Accuracy: ${Math.round(input.previousAccuracy * 100)}%\n${input.previousAccuracy < 0.3 ? "Previous recommendations did not match what was actually worked on. Favor tasks with higher trajectoryFit and taskClarity." : input.previousAccuracy > 0.7 ? "Previous recommendations were accurate. Continue with similar scoring approach." : ""}` : ""}
+
+${input.learningContext ? `## Learning from Past Recommendations (embeddings-based)\n${input.learningContext}` : ""}
+
+${input.selfPlayExamples && (input.selfPlayExamples.completed.length > 0 || input.selfPlayExamples.skipped.length > 0) ? `## Self-Play Reward Signal
+This is the ground truth from user behavior. Use it to adjust your scoring.
+
+${input.selfPlayExamples.completed.length > 0 ? `Tasks the user COMPLETED (reward=1, boost similar tasks by +2 to +3 on trajectoryFit and momentum):
+${input.selfPlayExamples.completed.map((t) => `- "${t.taskTitle}" (${t.taskType})`).join("\n")}` : ""}
+
+${input.selfPlayExamples.skipped.length > 0 ? `Tasks the user SKIPPED (reward=0, penalize similar tasks by -2 to -3 on trajectoryFit):
+${input.selfPlayExamples.skipped.map((t) => `- "${t.taskTitle}" (${t.taskType})`).join("\n")}` : ""}` : ""}
 
 ## Candidate Tasks to Score
 
