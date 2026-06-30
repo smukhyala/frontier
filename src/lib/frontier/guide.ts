@@ -58,6 +58,7 @@ export async function runGuide(input: {
   candidateTasks: CandidateTask[];
   goal?: string;
   deadline?: string;
+  previousAccuracy?: number;
 }): Promise<ScoredTask[]> {
   const taskList = input.candidateTasks
     .map(
@@ -86,6 +87,7 @@ ${input.projectState.recentTrajectory.map((t) => `- ${t}`).join("\n")}
 
 ${input.goal ? `## User's Goal\n${input.goal}\n` : ""}
 ${input.deadline ? `## Deadline\n${input.deadline}\n` : ""}
+${input.previousAccuracy !== undefined ? `## Previous Recommendation Accuracy: ${Math.round(input.previousAccuracy * 100)}%\n${input.previousAccuracy < 0.3 ? "Previous recommendations did not match what was actually worked on. Favor tasks with higher trajectoryFit and taskClarity." : input.previousAccuracy > 0.7 ? "Previous recommendations were accurate. Continue with similar scoring approach." : ""}` : ""}
 
 ## Candidate Tasks to Score
 
@@ -99,6 +101,7 @@ Score each task on all 7 dimensions. Be honest and critical. Calculate totalScor
     schema: ScoredTasksSchema,
     schemaName: "scored_tasks",
     maxTokens: 8192,
+    temperature: 0.4,
   });
 
   // Sort by totalScore descending

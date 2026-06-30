@@ -8,15 +8,27 @@ Frontier is an SGS-inspired project planning tool that connects to your GitHub r
 
 ## How It Works
 
-Frontier runs a 4-stage LLM pipeline inspired by the [Self-Guided Self-Play (SGS)](https://arxiv.org/abs/2502.14606) paper:
+Frontier runs a 4-stage LLM pipeline inspired by [Self-Guided Self-Play](https://arxiv.org/abs/2604.20209) (Bailey et al., Stanford 2026):
 
-1. **Historian** - Reconstructs your project's current state from git history, README, issues, and PRs. Identifies the *project frontier*: the boundary between what's done and what naturally comes next.
+1. **Historian** — Reconstructs project state from git history, README, issues, PRs, and file activity patterns. Identifies the *project frontier*: the boundary between what's done and what comes next.
 
-2. **Conjecturer** - Generates 8-12 candidate next tasks that are local continuations of recent work. Analogous to SGS synthetic problem generation—tasks are stepping stones, not roadmap items.
+2. **Conjecturer** — Generates 8-12 candidate tasks that are local continuations of recent work. Each task includes an evidence chain tracing back to specific commits, files, or README sections.
 
-3. **Guide** - Scores each candidate on 7 dimensions (trajectory fit, deadline relevance, blocking power, information gain, task clarity, right-sized, momentum). Analogous to the SGS Guide reward—filters out busy work and surfaces genuinely valuable next steps.
+3. **Guide** — Scores each candidate on 7 dimensions (trajectory fit, deadline relevance, blocking power, information gain, task clarity, right-sized, momentum). Filters out vague, disconnected, or oversized suggestions.
 
-4. **Planner** - Selects the best task and produces a concrete 30/60/90 minute execution plan with definition of done, risks, and a ready-to-create GitHub issue.
+4. **Planner** — Selects the best task and produces a concrete 30/60/90 minute execution plan with definition of done, risks, and a ready-to-create GitHub issue.
+
+## Features
+
+- **Evidence-traced suggestions** — every task cites the specific commits, files, or README sections that motivated it
+- **File activity analysis** — identifies hotspot files and active areas across commits
+- **Progress tracking** — mark tasks as started/done, pipeline avoids re-recommending completed work
+- **Accuracy tracking** — measures how well recommendations predicted what you actually worked on
+- **Task history timeline** — see how recommendations evolved across multiple analyses
+- **Suggested dev schedule** — weekly calendar distributing tasks across your work week
+- **Feedback loop** — refine and regenerate with your input
+- **GitHub issue creation** — one-click issue from any recommendation
+- **Webhook support** — auto-re-analyze on push (when deployed)
 
 ## Setup
 
@@ -30,9 +42,9 @@ Frontier runs a 4-stage LLM pipeline inspired by the [Self-Guided Self-Play (SGS
    - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github`
 4. Note your Client ID and Client Secret
 
-### 2. Anthropic API Key
+### 2. OpenAI API Key
 
-Get an API key from [console.anthropic.com](https://console.anthropic.com/)
+Get an API key from [platform.openai.com](https://platform.openai.com/)
 
 ### 3. Environment Variables
 
@@ -46,7 +58,7 @@ Fill in:
 AUTH_SECRET=<generate with: npx auth secret>
 AUTH_GITHUB_ID=<your GitHub OAuth client ID>
 AUTH_GITHUB_SECRET=<your GitHub OAuth client secret>
-ANTHROPIC_API_KEY=<your Anthropic API key>
+OPENAI_API_KEY=<your OpenAI API key>
 NEXTAUTH_URL=http://localhost:3000
 ```
 
@@ -61,11 +73,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Tech Stack
 
-- **Next.js 15** App Router + TypeScript
-- **Tailwind CSS** + **shadcn/ui** for components
-- **motion.dev** for animations
+- **Next.js 16** App Router + TypeScript
+- **Tailwind CSS** + **shadcn/ui** + **motion.dev**
 - **Auth.js v5** with GitHub OAuth
-- **Anthropic Claude** for LLM pipeline
+- **OpenAI GPT-4o** for the LLM pipeline
 - **better-sqlite3** for local persistence
 - **Octokit** for GitHub API
 - **Zod** for schema validation
@@ -74,36 +85,36 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```
 src/
-├── app/                    # Next.js pages and API routes
-│   ├── api/analysis/       # Analysis pipeline API
-│   ├── repos/              # Repository picker and dashboard
-│   └── analysis/           # Analysis results page
+├── app/
+│   ├── api/analysis/       # Pipeline API + SSE streaming
+│   ├── api/webhooks/       # GitHub webhook receiver
+│   ├── dashboard/          # Repo picker + weekly schedule
+│   ├── analysis/           # Analysis results page
+│   └── paper/              # SGS paper explanation
 ├── components/
-│   ├── ui/                 # shadcn/ui components
-│   ├── landing/            # Landing page components
-│   ├── analysis/           # Analysis result components
-│   ├── dashboard/          # Repo dashboard components
-│   └── repos/              # Repository list components
+│   ├── analysis/           # Recommendation card, candidate table, commit graph, file heatmap
+│   ├── dashboard/          # Week calendar, accuracy stats, context dialog
+│   └── landing/            # Hero, pain point, timeline comparison
 ├── lib/
 │   ├── frontier/           # 4-stage pipeline
 │   │   ├── historian.ts    # Stage 1: Project state reconstruction
 │   │   ├── conjecturer.ts  # Stage 2: Candidate task generation
 │   │   ├── guide.ts        # Stage 3: Multi-dimensional scoring
 │   │   ├── planner.ts      # Stage 4: Task selection + execution plan
-│   │   └── pipeline.ts     # Pipeline orchestrator
+│   │   ├── pipeline.ts     # Orchestrator + SSE events
+│   │   ├── file-analysis.ts # File activity computation
+│   │   └── accuracy.ts     # Prediction accuracy scoring
 │   ├── auth.ts             # Auth.js configuration
-│   ├── db.ts               # SQLite database
+│   ├── db.ts               # SQLite (analysis_runs, task_status, webhook_configs)
 │   ├── github.ts           # GitHub API client
-│   ├── llm.ts              # Anthropic client wrapper
-│   └── schemas.ts          # Zod schemas
-└── hooks/                  # React hooks (SSE, clipboard)
+│   ├── llm.ts              # OpenAI structured output wrapper
+│   └── schemas.ts          # Zod schemas for all pipeline stages
+└── hooks/                  # SSE stream consumer, clipboard
 ```
 
 ## The Pipeline
 
 ### Scoring Dimensions (Guide)
-
-Each candidate task is scored 0-5 on:
 
 | Dimension | What it measures |
 |-----------|-----------------|
@@ -116,22 +127,19 @@ Each candidate task is scored 0-5 on:
 | **Momentum** | Is it likely to produce visible progress? |
 
 ### Anti-patterns the Guide penalizes:
-- Vague tasks
+- Vague tasks ("improve error handling")
 - Tasks disconnected from recent commits
 - Fake productivity (renaming, trivial formatting)
 - Huge roadmap items disguised as tasks
 - Tasks that sound impressive but don't unblock anything
 
-## Future Extensions
+### Accuracy Tracking
 
-- **Linear integration** - Create Linear issues from recommendations
-- **Notion integration** - Sync task plans to Notion
-- **Slack updates** - Daily frontier task notifications
-- **Daily recommendations** - Automated daily task suggestions
-- **Evaluation framework** - Compare against static planners
-- **Learning preferences** - Adapt to user's task preferences over time
-- **Team mode** - Multi-user repository analysis
-- **Custom scoring weights** - Let users tune the Guide's scoring rubric
+After each analysis, when you run a new one on the same repo, Frontier compares what it recommended last time to what you actually committed. It scores keyword overlap between the recommended task and your subsequent commits + file changes. This accuracy metric feeds back into the Guide, adjusting scoring priorities when predictions are off.
+
+## Proof of Concept
+
+Currently works with GitHub. The pipeline outputs structured data that could feed into Notion pages, Slack updates, Linear tickets, or daily standup summaries. This is a starting point.
 
 ## License
 

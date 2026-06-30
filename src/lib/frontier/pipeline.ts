@@ -3,12 +3,18 @@ import {
   insertRun,
   updateRunStage,
   updateRunStatus,
+  getCompletedTasksForRepo,
+  getLatestCompletedRun,
+  updateAccuracyScore,
 } from "@/lib/db";
 import {
   createOctokit,
   getRecentCommits,
   getReadme,
   getOpenIssues,
+  getFileContents,
+  getRepoTree,
+  getBranches,
   getRecentPullRequests,
   getRepoInfo,
 } from "@/lib/github";
@@ -16,6 +22,8 @@ import { runHistorian } from "./historian";
 import { runConjecturer } from "./conjecturer";
 import { runGuide } from "./guide";
 import { runPlanner } from "./planner";
+import { analyzeFileActivity, extractTodos } from "./file-analysis";
+import { scoreAccuracy } from "./accuracy";
 import type { ProjectState, CandidateTask, ScoredTask, FrontierRecommendation } from "@/lib/schemas";
 
 export type PipelineStage = "historian" | "conjecturer" | "guide" | "planner";
@@ -83,14 +91,47 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
     const octokit = createOctokit(accessToken);
     const commitCount = depth === "deep" ? 50 : depth === "light" ? 15 : 30;
 
-    const [repoInfo, commits, readme, issues, pullRequests] =
+    const [repoInfo, commits, readme, issues, pullRequests, repoTree, branches] =
       await Promise.all([
         getRepoInfo(octokit, owner, repo),
         getRecentCommits(octokit, owner, repo, commitCount),
         getReadme(octokit, owner, repo),
         getOpenIssues(octokit, owner, repo),
         getRecentPullRequests(octokit, owner, repo),
+        getRepoTree(octokit, owner, repo),
+        getBranches(octokit, owner, repo),
       ]);
+
+    // ── File Activity Analysis (pure computation, no LLM) ──
+    const fileActivity = analyzeFileActivity(commits);
+
+    // ── Code Scanning: fetch contents of most-edited files ──
+    const hotFiles = fileActivity.topFiles.slice(0, 6).map((f) => f.path);
+    const codeSnippets = await getFileContents(octokit, owner, repo, hotFiles);
+
+    // ── TODO/FIXME extraction from code ──
+    const todos = extractTodos(codeSnippets);
+
+    // ── Completed tasks from previous runs ──
+    const completedTasks = getCompletedTasksForRepo(owner, repo, userId);
+    const completedTaskTitles = completedTasks.map((t) => t.title);
+
+    // ── Accuracy scoring: compare previous recommendation to what was actually done ──
+    let previousAccuracy: number | undefined;
+    const previousRun = getLatestCompletedRun(owner, repo, userId);
+    if (previousRun?.planner_output) {
+      try {
+        const prevPlanner = JSON.parse(previousRun.planner_output) as FrontierRecommendation;
+        const prevGuide = JSON.parse(previousRun.guide_output!) as ScoredTask[];
+        const prevTask = prevGuide.find((t) => t.id === prevPlanner.selectedTaskId) ?? prevGuide[0];
+        if (prevTask) {
+          previousAccuracy = await scoreAccuracy(prevTask, commits);
+          updateAccuracyScore(previousRun.id, previousAccuracy);
+        }
+      } catch {
+        // Skip accuracy if parsing fails
+      }
+    }
 
     // ── Stage 1: Historian ──
     let projectState: ProjectState;
@@ -110,8 +151,14 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
         goal,
         deadline,
         notes,
+        fileActivity,
+        completedTaskTitles,
+        codeSnippets,
+        todos,
+        repoTree,
+        branches,
       });
-      const historianPayload = { ...projectState, _commits: commits.slice(0, 20) };
+      const historianPayload = { ...projectState, _commits: commits.slice(0, 20), _fileActivity: fileActivity };
       updateRunStage(analysisId, "historian", JSON.stringify(historianPayload));
       emit({ stage: "historian", status: "complete", data: historianPayload });
     } catch (error) {
@@ -128,7 +175,7 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
     let candidateTasks: CandidateTask[];
     try {
       candidateTasks = await runConjecturer({
-        projectState: { ...projectState, _commits: commits.slice(0, 20) },
+        projectState: { ...projectState, _commits: commits.slice(0, 20), _fileActivity: fileActivity, _codeSnippets: codeSnippets, _todos: todos },
         goal,
         deadline,
         notes,
@@ -161,6 +208,7 @@ export async function runPipeline(params: PipelineParams): Promise<void> {
         candidateTasks,
         goal,
         deadline,
+        previousAccuracy,
       });
       updateRunStage(analysisId, "guide", JSON.stringify(scoredTasks));
       emit({ stage: "guide", status: "complete", data: scoredTasks });

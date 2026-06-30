@@ -77,12 +77,32 @@ export function CandidateTable({ tasks, selectedTaskId }: CandidateTableProps) {
                           {task.title}
                         </span>
                       </div>
-                      <div className="mt-1 flex items-start gap-1.5">
-                        <span className="text-[9px] font-mono text-chart-1/40 mt-px shrink-0">why</span>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                      {/* Evidence chain */}
+                      {task.evidenceChain && task.evidenceChain.length > 0 ? (
+                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                          {task.evidenceChain.map((e, ei) => {
+                            const icons: Record<string, string> = {
+                              commit: "text-chart-1",
+                              file: "text-amber-400",
+                              readme: "text-emerald-400",
+                              goal: "text-purple-400",
+                              gap: "text-chart-5",
+                              code_comment: "text-orange-400",
+                            };
+                            return (
+                              <span key={ei} className="text-[10px] text-muted-foreground leading-relaxed">
+                                <span className={`font-mono ${icons[e.type] ?? "text-muted-foreground"}`}>{e.type}</span>
+                                {" "}{e.detail}
+                                {ei < task.evidenceChain.length - 1 && <span className="text-muted-foreground/20 ml-1">→</span>}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground mt-1">
                           {task.whyNow}
                         </p>
-                      </div>
+                      )}
                     </div>
                     <div>
                       <Badge
@@ -99,13 +119,13 @@ export function CandidateTable({ tasks, selectedTaskId }: CandidateTableProps) {
                       <span className="text-xs font-mono tabular-nums">
                         {task.totalScore}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/30">/35</span>
+                      <span className="text-[10px] text-muted-foreground/50">/35</span>
                     </div>
                     <div className="flex items-center justify-center">
                       {isExpanded ? (
-                        <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/30" />
+                        <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/50" />
                       ) : (
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/30" />
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50" />
                       )}
                     </div>
                   </div>
@@ -123,7 +143,7 @@ export function CandidateTable({ tasks, selectedTaskId }: CandidateTableProps) {
                           <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-3">
                               <div>
-                                <div className="text-[10px] text-muted-foreground/40 uppercase tracking-wide mb-1">
+                                <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mb-1">
                                   Description
                                 </div>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -131,7 +151,7 @@ export function CandidateTable({ tasks, selectedTaskId }: CandidateTableProps) {
                                 </p>
                               </div>
                               <div>
-                                <div className="text-[10px] text-muted-foreground/40 uppercase tracking-wide mb-1">
+                                <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mb-1">
                                   Critique
                                 </div>
                                 <p className="text-xs text-chart-5/60 leading-relaxed">
@@ -140,20 +160,20 @@ export function CandidateTable({ tasks, selectedTaskId }: CandidateTableProps) {
                               </div>
                             </div>
                             <div>
-                              <div className="text-[10px] text-muted-foreground/40 uppercase tracking-wide mb-2">
+                              <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mb-2">
                                 Scores
                               </div>
                               <div className="space-y-1.5">
                                 {scoreKeys.map(({ key, label }) => (
                                   <div key={key} className="flex items-center gap-2">
-                                    <span className="text-[10px] text-muted-foreground/40 w-16 shrink-0">
+                                    <span className="text-[10px] text-muted-foreground/60 w-16 shrink-0">
                                       {label}
                                     </span>
                                     <Progress
                                       value={(task.scores[key] / 5) * 100}
                                       className="h-1 flex-1"
                                     />
-                                    <span className="text-[10px] font-mono text-muted-foreground/40 w-3 text-right">
+                                    <span className="text-[10px] font-mono text-muted-foreground/60 w-3 text-right">
                                       {task.scores[key]}
                                     </span>
                                   </div>

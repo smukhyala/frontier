@@ -7,6 +7,7 @@ import { SignInButton } from "@/components/auth/sign-in-button";
 import { UserMenu } from "@/components/auth/user-menu";
 
 const navLinks = [
+  { href: "/demo", label: "Demo" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/paper", label: "Paper" },
 ];

@@ -142,6 +142,85 @@ export async function getRecentPullRequests(
   }
 }
 
+export async function getRepoTree(
+  octokit: Octokit,
+  owner: string,
+  repo: string
+): Promise<string[]> {
+  try {
+    const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+    const { data } = await octokit.rest.git.getTree({
+      owner,
+      repo,
+      tree_sha: repoData.default_branch,
+      recursive: "true",
+    });
+    return data.tree
+      .filter((item) => item.type === "blob" && item.path)
+      .map((item) => item.path!)
+      .slice(0, 500);
+  } catch {
+    return [];
+  }
+}
+
+export async function getBranches(
+  octokit: Octokit,
+  owner: string,
+  repo: string
+): Promise<{ name: string; isDefault: boolean; lastCommitDate?: string }[]> {
+  try {
+    const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+    const { data } = await octokit.rest.repos.listBranches({
+      owner,
+      repo,
+      per_page: 20,
+    });
+    return data.map((b) => ({
+      name: b.name,
+      isDefault: b.name === repoData.default_branch,
+      lastCommitDate: undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getFileContents(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  paths: string[]
+): Promise<{ path: string; content: string }[]> {
+  const results: { path: string; content: string }[] = [];
+  // Fetch in parallel, limit to 8 files, 2000 chars each
+  const toFetch = paths.slice(0, 8);
+  const settled = await Promise.allSettled(
+    toFetch.map(async (path) => {
+      try {
+        const { data } = await octokit.rest.repos.getContent({
+          owner,
+          repo,
+          path,
+        });
+        if ("content" in data && typeof data.content === "string") {
+          const decoded = Buffer.from(data.content, "base64").toString("utf-8");
+          return { path, content: decoded.slice(0, 2000) };
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    })
+  );
+  for (const result of settled) {
+    if (result.status === "fulfilled" && result.value) {
+      results.push(result.value);
+    }
+  }
+  return results;
+}
+
 export async function createGitHubIssue(
   octokit: Octokit,
   owner: string,

@@ -10,6 +10,7 @@ export async function callStructured<T extends z.ZodType>(params: {
   schemaName: string;
   model?: string;
   maxTokens?: number;
+  temperature?: number;
 }): Promise<z.infer<T>> {
   const {
     system,
@@ -18,16 +19,17 @@ export async function callStructured<T extends z.ZodType>(params: {
     schemaName,
     model = process.env.OPENAI_MODEL || "gpt-4o",
     maxTokens = 8192,
+    temperature,
   } = params;
 
   const jsonSchema = z.toJSONSchema(schema) as Record<string, unknown>;
   delete jsonSchema["$schema"];
-  // Strip keywords not supported by OpenAI strict mode
   stripUnsupportedKeywords(jsonSchema);
 
   const response = await client.chat.completions.create({
     model,
     max_tokens: maxTokens,
+    temperature,
     messages: [
       { role: "system", content: system },
       { role: "user", content: prompt },
@@ -49,7 +51,6 @@ export async function callStructured<T extends z.ZodType>(params: {
 }
 
 function stripUnsupportedKeywords(obj: Record<string, unknown>): void {
-  // OpenAI strict mode doesn't support these
   delete obj["minItems"];
   delete obj["maxItems"];
   delete obj["minimum"];

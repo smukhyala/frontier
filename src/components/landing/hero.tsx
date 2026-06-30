@@ -49,16 +49,24 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.15 }}
         >
-          {session?.user ? (
-            <Link href="/dashboard">
-              <Button className="rounded-full px-6 h-10 text-sm">
-                Open Dashboard
-                <ArrowRight className="ml-2 h-3.5 w-3.5" />
-              </Button>
+          <div className="flex items-center gap-3">
+            {session?.user ? (
+              <Link href="/dashboard">
+                <Button className="rounded-full px-6 h-10 text-sm">
+                  Open Dashboard
+                  <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            ) : (
+              <SignInButton size="default" className="rounded-full px-6 h-10 text-sm" />
+            )}
+            <Link
+              href="/demo"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              See a demo &rarr;
             </Link>
-          ) : (
-            <SignInButton size="default" className="rounded-full px-6 h-10 text-sm" />
-          )}
+          </div>
         </motion.div>
       </div>
     </section>

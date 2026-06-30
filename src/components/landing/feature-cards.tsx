@@ -76,7 +76,7 @@ export function FeatureCards() {
                 </motion.div>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground/40 mt-4 text-center">
+            <p className="text-[11px] text-muted-foreground/60 mt-4 text-center">
               Frontier&apos;s pipeline outputs structured data. Each integration is a different consumer of the same scored task.
             </p>
           </Card>

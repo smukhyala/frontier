@@ -38,7 +38,7 @@ export function PipelineProgress({
                     ? "border-border bg-secondary text-foreground"
                     : isError
                       ? "border-chart-5/20 text-chart-5"
-                      : "border-transparent text-muted-foreground/30"
+                      : "border-transparent text-muted-foreground/50"
               }`}
             >
               {isComplete ? (

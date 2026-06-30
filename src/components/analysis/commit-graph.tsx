@@ -155,8 +155,8 @@ export function CommitGraph({ projectState }: CommitGraphProps) {
                                 </div>
                                 {commit.filesChanged.length > 0 && (
                                   <div className="flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <FileCode className="h-2.5 w-2.5 text-muted-foreground/30" />
-                                    <span className="text-[10px] text-muted-foreground/30">
+                                    <FileCode className="h-2.5 w-2.5 text-muted-foreground/50" />
+                                    <span className="text-[10px] text-muted-foreground/50">
                                       {commit.filesChanged.slice(0, 3).join(", ")}
                                       {commit.filesChanged.length > 3 &&
                                         ` +${commit.filesChanged.length - 3}`}
@@ -197,7 +197,7 @@ export function CommitGraph({ projectState }: CommitGraphProps) {
                     <span className={`text-[10px] shrink-0 capitalize ${theme.color.text}`}>
                       {theme.name}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/30">
+                    <span className="text-[10px] text-muted-foreground/50">
                       {theme.count}
                     </span>
                   </motion.div>

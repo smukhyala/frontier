@@ -153,10 +153,10 @@ export function PaperContent() {
             ].map(([mapping, desc], i) => (
               <div key={i} className="flex gap-3 text-sm">
                 <span
-                  className="font-mono text-xs text-muted-foreground/40 w-48 shrink-0 mt-0.5"
+                  className="font-mono text-xs text-muted-foreground w-48 shrink-0 mt-0.5"
                   dangerouslySetInnerHTML={{ __html: mapping }}
                 />
-                <span className="text-muted-foreground">{desc}</span>
+                <span className="text-foreground/80">{desc}</span>
               </div>
             ))}
           </div>

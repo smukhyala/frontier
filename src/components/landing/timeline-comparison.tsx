@@ -50,7 +50,7 @@ export function TimelineComparison() {
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.04 }}
                   >
-                    <span className="text-[10px] font-mono text-muted-foreground/30 w-10 shrink-0 mt-0.5">
+                    <span className="text-[10px] font-mono text-muted-foreground/50 w-10 shrink-0 mt-0.5">
                       {item.day}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -67,7 +67,7 @@ export function TimelineComparison() {
                   </motion.div>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground/30 mt-4">
+              <p className="text-[10px] text-muted-foreground/50 mt-4">
                 Stale on day one. Doesn&apos;t adapt to pivots, scope changes, or what&apos;s actually been built.
               </p>
             </div>
@@ -87,7 +87,7 @@ export function TimelineComparison() {
                     viewport={{ once: true }}
                     transition={{ delay: 0.1 + i * 0.04 }}
                   >
-                    <span className="text-[10px] font-mono text-muted-foreground/30 w-10 shrink-0 mt-0.5">
+                    <span className="text-[10px] font-mono text-muted-foreground/50 w-10 shrink-0 mt-0.5">
                       {item.day}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -104,7 +104,7 @@ export function TimelineComparison() {
                   </motion.div>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground/30 mt-4">
+              <p className="text-[10px] text-muted-foreground/50 mt-4">
                 Each task grounded in a specific commit. Changes daily.
               </p>
             </div>

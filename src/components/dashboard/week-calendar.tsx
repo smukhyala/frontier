@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Clock, Calendar, X } from "lucide-react";
+import { Clock, Calendar, X, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { ScheduleTask } from "@/app/dashboard/page";
 
@@ -111,17 +112,28 @@ export function WeekCalendar({ tasks }: { tasks: ScheduleTask[] }) {
             Suggested Dev Schedule
           </h2>
         </div>
-        {deadline && (
-          <span className="text-[10px] text-chart-4 font-mono">
-            deadline: {deadline}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {deadline && (
+            <span className="text-[10px] text-chart-4 font-mono">
+              deadline: {deadline}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] text-muted-foreground px-2"
+            onClick={() => exportToIcs(schedule)}
+          >
+            <Download className="h-3 w-3 mr-1" />
+            .ics
+          </Button>
+        </div>
       </div>
 
       {/* Repo filter with color dots */}
       {allRepos.length > 1 && (
         <div className="flex items-center gap-2 mb-5 flex-wrap">
-          <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wide mr-1">
+          <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide mr-1">
             repos
           </span>
           {allRepos.map((repo) => {
@@ -134,12 +146,12 @@ export function WeekCalendar({ tasks }: { tasks: ScheduleTask[] }) {
                 className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors ${
                   isSelected
                     ? "bg-secondary text-foreground border border-border"
-                    : "text-muted-foreground/30 border border-transparent hover:text-muted-foreground/60"
+                    : "text-muted-foreground/50 border border-transparent hover:text-muted-foreground/60"
                 }`}
               >
                 <div className={`h-2 w-2 rounded-full ${dotColor} ${isSelected ? "opacity-60" : "opacity-20"}`} />
                 {repo}
-                {isSelected && <X className="h-2.5 w-2.5 text-muted-foreground/30" />}
+                {isSelected && <X className="h-2.5 w-2.5 text-muted-foreground/50" />}
               </button>
             );
           })}
@@ -167,9 +179,9 @@ export function WeekCalendar({ tasks }: { tasks: ScheduleTask[] }) {
                   {day.label}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground/40">{day.sub}</span>
+                  <span className="text-[10px] text-muted-foreground/60">{day.sub}</span>
                   {totalMin > 0 && (
-                    <span className="text-[10px] text-muted-foreground/30 flex items-center gap-0.5">
+                    <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
                       <Clock className="h-2.5 w-2.5" />
                       {totalMin}m
                     </span>
@@ -186,17 +198,20 @@ export function WeekCalendar({ tasks }: { tasks: ScheduleTask[] }) {
                       href={`/analysis/${task.analysisId}`}
                     >
                       <div
-                        className={`rounded-lg border-l-2 ${typeColors[task.taskType] ?? "border-l-muted-foreground"} bg-secondary/30 p-2.5 hover:bg-secondary/60 transition-colors cursor-pointer`}
+                        className={`rounded-lg border-l-2 ${typeColors[task.taskType] ?? "border-l-muted-foreground"} ${task.isFrontierPick ? "bg-chart-1/[0.06] ring-1 ring-chart-1/10" : "bg-secondary/30"} p-2.5 hover:bg-secondary/60 transition-colors cursor-pointer`}
                       >
+                        {task.isFrontierPick && (
+                          <span className="text-[8px] font-mono text-chart-1/70 uppercase tracking-wider">frontier pick</span>
+                        )}
                         <p className="text-xs leading-relaxed font-medium mb-1.5">
                           {task.title}
                         </p>
                         <div className="flex items-center gap-1.5">
                           <div className={`h-1.5 w-1.5 rounded-full ${repoDot} opacity-50`} />
-                          <span className="text-[10px] text-muted-foreground/40 truncate">
+                          <span className="text-[10px] text-muted-foreground/60 truncate">
                             {task.repo}
                           </span>
-                          <span className="text-[10px] text-muted-foreground/25 ml-auto shrink-0">
+                          <span className="text-[10px] text-muted-foreground/50 ml-auto shrink-0">
                             {task.estimatedMinutes}m
                           </span>
                         </div>
@@ -214,6 +229,76 @@ export function WeekCalendar({ tasks }: { tasks: ScheduleTask[] }) {
           );
         })}
       </div>
+
+      {/* Legend */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+        {/* Task type colors */}
+        <div className="flex items-center gap-3">
+          <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wide">types</span>
+          {Object.entries(typeColors)
+            .filter(([type]) => filteredTasks.some((t) => t.taskType === type))
+            .map(([type, color]) => (
+              <div key={type} className="flex items-center gap-1">
+                <div className={`w-3 h-1.5 rounded-sm border-l-2 ${color}`} />
+                <span className="text-[9px] text-muted-foreground/60 capitalize">{type}</span>
+              </div>
+            ))}
+        </div>
+
+        {/* Repo colors */}
+        <div className="flex items-center gap-3">
+          <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wide">repos</span>
+          {allRepos.filter((r) => selectedRepos.has(r)).map((repo) => {
+            const dot = repoColorMap.get(repo) ?? "bg-muted-foreground";
+            return (
+              <div key={repo} className="flex items-center gap-1">
+                <div className={`h-1.5 w-1.5 rounded-full ${dot} opacity-60`} />
+                <span className="text-[9px] text-muted-foreground/60 font-mono">{repo}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Frontier indicator */}
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded bg-chart-1/[0.06] ring-1 ring-chart-1/10" />
+          <span className="text-[9px] text-muted-foreground/60">frontier pick</span>
+        </div>
+      </div>
     </motion.div>
   );
+}
+
+function exportToIcs(schedule: { label: string; sub: string; tasks: ScheduleTask[] }[]) {
+  const today = new Date();
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Frontier//EN"];
+
+  for (let i = 0; i < schedule.length; i++) {
+    const day = schedule[i];
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const dateStr = date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+    for (const task of day.tasks) {
+      const endDate = new Date(date.getTime() + task.estimatedMinutes * 60000);
+      const endStr = endDate.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      lines.push(
+        "BEGIN:VEVENT",
+        `DTSTART:${dateStr}`,
+        `DTEND:${endStr}`,
+        `SUMMARY:${task.title}`,
+        `DESCRIPTION:${task.repo} — ${task.description.replace(/\n/g, "\\n")}`,
+        "END:VEVENT"
+      );
+    }
+  }
+
+  lines.push("END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "frontier-schedule.ics";
+  a.click();
+  URL.revokeObjectURL(url);
 }

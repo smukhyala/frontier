@@ -27,10 +27,10 @@ Now you must:
 Rules:
 - Be concise. Steps under 15 words. Done criteria under 10 words. Risks under 10 words.
 - Reference specific files or components when possible
-- The 30-minute version should be a meaningful subset
-- goalConnection must tie to the user's stated goal/deadline or the project trajectory
-- genericAlternative must name a specific generic task and explain why it's wrong for right now
-- The GitHub issue should be well-formatted markdown`;
+- The 30-minute version should be a meaningful subset, not just "step 1"
+- goalConnection must tie to the user's stated goal/deadline or the project trajectory. Be specific about HOW this task moves the needle.
+- genericAlternative must name a specific generic task (e.g., "A generic planner would suggest 'add comprehensive test coverage'") and explain why it's wrong for this specific repo right now (e.g., "because the auth module is still being rewritten based on the last 4 commits")
+- The GitHub issue should be well-formatted markdown with context section`;
 
 export async function runPlanner(input: {
   projectState: ProjectState;
@@ -91,5 +91,6 @@ Format the GitHub issue body in clean markdown with sections for Context, Task, 
     schema: FrontierRecommendationSchema,
     schemaName: "frontier_recommendation",
     maxTokens: 6144,
+    temperature: 0.5,
   });
 }

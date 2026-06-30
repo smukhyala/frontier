@@ -31,6 +31,7 @@ export interface ScheduleTask {
   description: string;
   whyNow: string;
   deadline?: string;
+  isFrontierPick: boolean;
 }
 
 export default async function DashboardPage() {
@@ -84,6 +85,7 @@ export default async function DashboardPage() {
           description: task.description,
           whyNow: task.whyNow,
           deadline: run.deadline ?? undefined,
+          isFrontierPick: task.id === planner.selectedTaskId,
         });
       }
     } catch {
@@ -91,11 +93,29 @@ export default async function DashboardPage() {
     }
   }
 
+  // Compute accuracy stats
+  const accuracyScores = recentRuns
+    .map((r) => (r as unknown as Record<string, unknown>).accuracy_score as number | null)
+    .filter((s): s is number => s !== null && s !== undefined);
+
+  const accuracyData = accuracyScores.length >= 2
+    ? {
+        overall: accuracyScores.reduce((a, b) => a + b, 0) / accuracyScores.length,
+        count: accuracyScores.length,
+        trend: (accuracyScores[0] > accuracyScores[accuracyScores.length - 1] + 0.1
+          ? "improving"
+          : accuracyScores[0] < accuracyScores[accuracyScores.length - 1] - 0.1
+            ? "declining"
+            : "stable") as "improving" | "stable" | "declining",
+      }
+    : null;
+
   return (
     <DashboardView
       repos={repos}
       frontierCards={frontierCards}
       scheduleTasks={scheduleTasks}
+      accuracyData={accuracyData}
     />
   );
 }

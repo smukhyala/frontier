@@ -57,7 +57,11 @@ export const CandidateTaskSchema = z.object({
   estimatedMinutes: z.number().describe("30-120"),
   whyNow: z
     .string()
-    .describe("Must cite specific evidence. Start with: 'Commit [sha] ...' or 'README mentions ...' or 'Files [x,y] were changed but ...' — never generic reasoning"),
+    .describe("One sentence summary of why this task now"),
+  evidenceChain: z.array(z.object({
+    type: z.enum(["commit", "file", "readme", "goal", "gap", "code_comment"]).describe("What kind of evidence"),
+    detail: z.string().describe("Short: e.g., 'commit abc123 added Stripe SDK' or 'README lists payments feature' or 'src/auth/ edited 5x but no tests'"),
+  })).describe("2-4 pieces of evidence tracing why this task was generated. Each links a data source to the reasoning."),
   expectedArtifact: z
     .string()
     .describe("What exists when done, under 10 words"),

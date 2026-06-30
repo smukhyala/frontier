@@ -30,7 +30,7 @@ export function HowItWorks() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
               >
-                <span className="text-xs font-mono text-muted-foreground/40 mt-1 w-6 shrink-0">
+                <span className="text-xs font-mono text-muted-foreground/60 mt-1 w-6 shrink-0">
                   {step.n}
                 </span>
                 <div>

@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Search, ArrowRight, Star, Lock, Globe, Clock } from "lucide-react";
+import { Search, ArrowRight, Star, Lock, Globe, Clock, Zap } from "lucide-react";
 import { ContextDialog } from "./context-dialog";
 import { WeekCalendar } from "./week-calendar";
+import { AccuracyStats } from "./accuracy-stats";
 import type { FrontierCard, ScheduleTask } from "@/app/dashboard/page";
 
 interface Repo {
@@ -27,13 +28,32 @@ export function DashboardView({
   repos,
   frontierCards,
   scheduleTasks,
+  accuracyData,
 }: {
   repos: Repo[];
   frontierCards: FrontierCard[];
   scheduleTasks: ScheduleTask[];
+  accuracyData: { overall: number; count: number; trend: "improving" | "stable" | "declining" } | null;
 }) {
   const [search, setSearch] = useState("");
   const [dialogRepo, setDialogRepo] = useState<{ owner: string; repo: string } | null>(null);
+  const [autoEnabled, setAutoEnabled] = useState<Set<string>>(new Set());
+
+  const toggleAuto = async (owner: string, repo: string) => {
+    const key = `${owner}/${repo}`;
+    const isEnabled = autoEnabled.has(key);
+    try {
+      await fetch(`/api/repos/${owner}/${repo}/webhook`, {
+        method: isEnabled ? "DELETE" : "POST",
+      });
+      setAutoEnabled((prev) => {
+        const next = new Set(prev);
+        if (isEnabled) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    } catch {}
+  };
 
   const filtered = repos.filter(
     (r) =>
@@ -52,6 +72,9 @@ export function DashboardView({
 
         {/* Weekly calendar */}
         <WeekCalendar tasks={scheduleTasks} />
+
+        {/* Accuracy stats */}
+        {accuracyData && <AccuracyStats data={accuracyData} />}
 
         {/* Frontier task cards */}
         {frontierCards.length > 0 && (
@@ -96,7 +119,7 @@ export function DashboardView({
                             <Clock className="h-2.5 w-2.5" />
                             {card.estimatedMinutes}m
                           </span>
-                          <span className="text-[10px] font-mono text-muted-foreground/40">
+                          <span className="text-[10px] font-mono text-muted-foreground/60">
                             {card.score}/35
                           </span>
                         </div>
@@ -160,13 +183,13 @@ export function DashboardView({
                       <Globe className="h-3 w-3 text-muted-foreground/20" />
                     )}
                     {repo.language && (
-                      <span className="text-[10px] text-muted-foreground/30">
+                      <span className="text-[10px] text-muted-foreground/50">
                         {repo.language}
                       </span>
                     )}
                   </div>
                   {repo.description && (
-                    <p className="text-xs text-muted-foreground/40 truncate mt-0.5">
+                    <p className="text-xs text-muted-foreground/60 truncate mt-0.5">
                       {repo.description}
                     </p>
                   )}
@@ -179,6 +202,19 @@ export function DashboardView({
                   </div>
                 )}
 
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`h-7 text-[10px] rounded-full px-2 shrink-0 transition-opacity ${
+                    autoEnabled.has(`${repo.owner}/${repo.name}`)
+                      ? "opacity-100 text-chart-1"
+                      : "opacity-0 group-hover:opacity-100 text-muted-foreground/60"
+                  }`}
+                  onClick={() => toggleAuto(repo.owner, repo.name)}
+                  title={autoEnabled.has(`${repo.owner}/${repo.name}`) ? "Auto-analysis on push (click to disable)" : "Enable auto-analysis on push"}
+                >
+                  <Zap className="h-3 w-3" />
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"

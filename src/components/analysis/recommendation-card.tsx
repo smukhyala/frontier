@@ -35,6 +35,7 @@ export function RecommendationCard({
   const { copied, copy } = useCopyClipboard();
   const [issueCreating, setIssueCreating] = useState(false);
   const [issueUrl, setIssueUrl] = useState<string | null>(null);
+  const [taskStatus, setTaskStatus] = useState<"recommended" | "started" | "done">("recommended");
 
   const handleCopy = () => {
     copy(formatPlan(recommendation, selectedTask));
@@ -53,6 +54,24 @@ export function RecommendationCard({
       toast.error("Failed");
     } finally {
       setIssueCreating(false);
+    }
+  };
+
+  const handleTaskStatus = async (status: "started" | "done") => {
+    try {
+      await fetch(`/api/analysis/${analysisId}/task-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: selectedTask.id,
+          title: selectedTask.title,
+          status,
+        }),
+      });
+      setTaskStatus(status);
+      toast.success(status === "started" ? "Marked as started" : "Marked as done");
+    } catch {
+      toast.error("Failed to update status");
     }
   };
 
@@ -83,6 +102,21 @@ export function RecommendationCard({
               </div>
             </div>
             <div className="flex gap-1.5 shrink-0">
+              {taskStatus === "recommended" && (
+                <Button variant="outline" size="sm" className="h-7 text-xs border-border" onClick={() => handleTaskStatus("started")}>
+                  Start
+                </Button>
+              )}
+              {taskStatus === "started" && (
+                <Button variant="outline" size="sm" className="h-7 text-xs border-chart-1/30 text-chart-1" onClick={() => handleTaskStatus("done")}>
+                  Done
+                </Button>
+              )}
+              {taskStatus === "done" && (
+                <Badge variant="outline" className="text-[10px] border-emerald-400/30 text-emerald-400 h-7 flex items-center">
+                  <Check className="h-3 w-3 mr-1" /> Completed
+                </Badge>
+              )}
               <Button variant="outline" size="sm" className="h-7 text-xs border-border" onClick={handleCopy}>
                 {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
@@ -115,11 +149,26 @@ export function RecommendationCard({
               </div>
             )}
 
-            {/* Commit evidence */}
-            {selectedTask.whyNow && (
-              <div className="flex items-start gap-2 text-xs">
-                <span className="text-chart-1 font-mono text-[10px] mt-0.5 shrink-0">evidence</span>
-                <span className="text-muted-foreground">{selectedTask.whyNow}</span>
+            {/* Evidence chain */}
+            {selectedTask.evidenceChain && selectedTask.evidenceChain.length > 0 && (
+              <div className="rounded-md bg-secondary/40 p-2.5 space-y-1">
+                <div className="text-[9px] font-mono text-muted-foreground/50 uppercase tracking-wide mb-1">reasoning trace</div>
+                {selectedTask.evidenceChain.map((e, i) => {
+                  const colors: Record<string, string> = {
+                    commit: "text-chart-1",
+                    file: "text-amber-400",
+                    readme: "text-emerald-400",
+                    goal: "text-purple-400",
+                    gap: "text-chart-5",
+                    code_comment: "text-orange-400",
+                  };
+                  return (
+                    <div key={i} className="flex items-start gap-2 text-[11px]">
+                      <span className={`font-mono ${colors[e.type] ?? "text-muted-foreground"} shrink-0 w-12`}>{e.type}</span>
+                      <span className="text-muted-foreground">{e.detail}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
