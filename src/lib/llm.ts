@@ -26,28 +26,51 @@ export async function callStructured<T extends z.ZodType>(params: {
   delete jsonSchema["$schema"];
   stripUnsupportedKeywords(jsonSchema);
 
-  const response = await client.chat.completions.create({
-    model,
-    max_tokens: maxTokens,
-    temperature,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: prompt },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: schemaName,
-        strict: true,
-        schema: jsonSchema,
+  let response;
+  try {
+    response = await client.chat.completions.create({
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: schemaName,
+          strict: true,
+          schema: jsonSchema,
+        },
       },
-    },
-  });
+    });
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Unknown OpenAI API error";
+    if (message.includes("401") || message.includes("Incorrect API key")) {
+      throw new Error(
+        "Invalid OpenAI API key. Check OPENAI_API_KEY in your .env.local file."
+      );
+    }
+    if (message.includes("429")) {
+      throw new Error(
+        "OpenAI rate limit exceeded. Wait a moment and try again."
+      );
+    }
+    throw new Error(`OpenAI API call failed: ${message}`);
+  }
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error("No content in response");
 
-  return schema.parse(JSON.parse(content));
+  try {
+    return schema.parse(JSON.parse(content));
+  } catch {
+    throw new Error(
+      "LLM returned an invalid response that didn't match the expected schema. Try running the analysis again."
+    );
+  }
 }
 
 function stripUnsupportedKeywords(obj: Record<string, unknown>): void {

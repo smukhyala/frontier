@@ -5,26 +5,31 @@ export function createOctokit(accessToken: string): Octokit {
 }
 
 export async function getUserRepos(octokit: Octokit) {
-  const { data } = await octokit.rest.repos.listForAuthenticatedUser({
-    sort: "pushed",
-    per_page: 100,
-    type: "owner",
-  });
-  return data.map((repo) => ({
-    id: repo.id,
-    name: repo.name,
-    fullName: repo.full_name,
-    owner: repo.owner.login,
-    description: repo.description,
-    language: repo.language,
-    stargazersCount: repo.stargazers_count,
-    forksCount: repo.forks_count,
-    updatedAt: repo.updated_at,
-    pushedAt: repo.pushed_at,
-    isPrivate: repo.private,
-    defaultBranch: repo.default_branch,
-    htmlUrl: repo.html_url,
-  }));
+  try {
+    const { data } = await octokit.rest.repos.listForAuthenticatedUser({
+      sort: "pushed",
+      per_page: 100,
+      type: "owner",
+    });
+    return data.map((repo) => ({
+      id: repo.id,
+      name: repo.name,
+      fullName: repo.full_name,
+      owner: repo.owner.login,
+      description: repo.description,
+      language: repo.language,
+      stargazersCount: repo.stargazers_count,
+      forksCount: repo.forks_count,
+      updatedAt: repo.updated_at,
+      pushedAt: repo.pushed_at,
+      isPrivate: repo.private,
+      defaultBranch: repo.default_branch,
+      htmlUrl: repo.html_url,
+    }));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    throw new Error(`Failed to fetch repositories: ${msg}`);
+  }
 }
 
 export async function getRepoInfo(
@@ -32,22 +37,27 @@ export async function getRepoInfo(
   owner: string,
   repo: string
 ) {
-  const { data } = await octokit.rest.repos.get({ owner, repo });
-  return {
-    name: data.name,
-    fullName: data.full_name,
-    description: data.description,
-    language: data.language,
-    stargazersCount: data.stargazers_count,
-    forksCount: data.forks_count,
-    openIssuesCount: data.open_issues_count,
-    defaultBranch: data.default_branch,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-    pushedAt: data.pushed_at,
-    htmlUrl: data.html_url,
-    topics: data.topics ?? [],
-  };
+  try {
+    const { data } = await octokit.rest.repos.get({ owner, repo });
+    return {
+      name: data.name,
+      fullName: data.full_name,
+      description: data.description,
+      language: data.language,
+      stargazersCount: data.stargazers_count,
+      forksCount: data.forks_count,
+      openIssuesCount: data.open_issues_count,
+      defaultBranch: data.default_branch,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      pushedAt: data.pushed_at,
+      htmlUrl: data.html_url,
+      topics: data.topics ?? [],
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    throw new Error(`Failed to fetch repo info for ${owner}/${repo}: ${msg}`);
+  }
 }
 
 export async function getRecentCommits(
@@ -56,18 +66,26 @@ export async function getRecentCommits(
   repo: string,
   count = 30
 ) {
-  const { data } = await octokit.rest.repos.listCommits({
-    owner,
-    repo,
-    per_page: count,
-  });
-  return data.map((commit) => ({
-    sha: commit.sha.slice(0, 7),
-    message: commit.commit.message,
-    author: commit.commit.author?.name ?? "Unknown",
-    date: commit.commit.author?.date ?? "",
-    filesChanged: (commit.files ?? []).map((f) => f.filename),
-  }));
+  try {
+    const { data } = await octokit.rest.repos.listCommits({
+      owner,
+      repo,
+      per_page: count,
+    });
+    return data.map((commit) => ({
+      sha: commit.sha.slice(0, 7),
+      message: commit.commit.message,
+      author: commit.commit.author?.name ?? "Unknown",
+      date: commit.commit.author?.date ?? "",
+      filesChanged: (commit.files ?? []).map((f) => f.filename),
+    }));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    if (msg.includes("Git Repository is empty")) {
+      return [];
+    }
+    throw new Error(`Failed to fetch commits for ${owner}/${repo}: ${msg}`);
+  }
 }
 
 export async function getReadme(
@@ -269,15 +287,20 @@ export async function createGitHubIssue(
       body,
       labels: labels ?? [],
     });
-    return { success: true, url: data.html_url, number: data.number };
+    return { success: true as const, url: data.html_url, number: data.number };
   } catch {
     // Retry without labels (they may not exist)
-    const { data } = await octokit.rest.issues.create({
-      owner,
-      repo,
-      title,
-      body,
-    });
-    return { success: true, url: data.html_url, number: data.number };
+    try {
+      const { data } = await octokit.rest.issues.create({
+        owner,
+        repo,
+        title,
+        body,
+      });
+      return { success: true as const, url: data.html_url, number: data.number };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      return { success: false as const, error: `Failed to create issue: ${msg}` };
+    }
   }
 }

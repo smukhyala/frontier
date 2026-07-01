@@ -30,7 +30,27 @@ Frontier runs a 4-stage LLM pipeline inspired by [Self-Guided Self-Play](https:/
 - **GitHub issue creation** — one-click issue from any recommendation
 - **Webhook support** — auto-re-analyze on push (when deployed)
 
-## Setup
+## Prerequisites
+
+- **Node.js 20+** (check with `node -v`)
+- A GitHub account
+- An OpenAI API key
+
+## Quick Start
+
+```bash
+./setup.sh    # installs deps, creates .env.local, checks Node version
+```
+
+Then fill in your keys in `.env.local` (the script tells you which ones) and run:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Manual Setup
 
 ### 1. GitHub OAuth App
 

@@ -24,20 +24,31 @@ export async function GET(
   const { owner, repo } = await params;
   const octokit = createOctokit(session.accessToken);
 
-  const [repoInfo, commits, readme] = await Promise.all([
-    getRepoInfo(octokit, owner, repo),
-    getRecentCommits(octokit, owner, repo, 20),
-    getReadme(octokit, owner, repo),
-  ]);
+  let repoInfo, commits, readme;
+  try {
+    [repoInfo, commits, readme] = await Promise.all([
+      getRepoInfo(octokit, owner, repo),
+      getRecentCommits(octokit, owner, repo, 20),
+      getReadme(octokit, owner, repo),
+    ]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json(
+      { error: `Failed to fetch repository data: ${msg}` },
+      { status: 502 }
+    );
+  }
 
   const commitSummary = commits
     .slice(0, 15)
     .map((c) => `[${c.date}] ${c.message}`)
     .join("\n");
 
-  const result = await callStructured({
-    system: `You infer the goal and current state of a software project from its metadata, README, and recent commits. Be specific and grounded in the actual data. Do not guess or hallucinate features not evidenced in the data.`,
-    prompt: `Infer the primary goal of this project.
+  let result;
+  try {
+    result = await callStructured({
+      system: `You infer the goal and current state of a software project from its metadata, README, and recent commits. Be specific and grounded in the actual data. Do not guess or hallucinate features not evidenced in the data.`,
+      prompt: `Infer the primary goal of this project.
 
 ## Repository: ${repoInfo.name}
 Description: ${repoInfo.description ?? "None"}
@@ -57,10 +68,17 @@ Based on all of this data, infer:
 3. The key signals you used
 4. What phase the project is in
 5. What recent work has focused on`,
-    schema: InferredGoalSchema,
-    schemaName: "inferred_goal",
-    maxTokens: 1024,
-  });
+      schema: InferredGoalSchema,
+      schemaName: "inferred_goal",
+      maxTokens: 1024,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json(
+      { error: `Failed to infer goal: ${msg}` },
+      { status: 502 }
+    );
+  }
 
   return NextResponse.json(result);
 }

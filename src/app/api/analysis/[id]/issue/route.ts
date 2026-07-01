@@ -25,14 +25,28 @@ export async function POST(
 
   const recommendation = JSON.parse(run.planner_output) as FrontierRecommendation;
   const octokit = createOctokit(session.accessToken);
-  const result = await createGitHubIssue(
-    octokit,
-    run.owner,
-    run.repo,
-    recommendation.suggestedGitHubIssue.title,
-    recommendation.suggestedGitHubIssue.body,
-    recommendation.suggestedGitHubIssue.labels
-  );
+
+  let result;
+  try {
+    result = await createGitHubIssue(
+      octokit,
+      run.owner,
+      run.repo,
+      recommendation.suggestedGitHubIssue.title,
+      recommendation.suggestedGitHubIssue.body,
+      recommendation.suggestedGitHubIssue.labels
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json(
+      { error: `Failed to create GitHub issue: ${msg}` },
+      { status: 502 }
+    );
+  }
+
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 502 });
+  }
 
   // Store issue number for auto-close later
   if (result.number) {
